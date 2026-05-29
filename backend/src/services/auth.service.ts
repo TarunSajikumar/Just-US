@@ -2,6 +2,19 @@ import { supabase } from "../config/supabase";
 import jwt from "jsonwebtoken";
 
 export const signupUser = async (data: any) => {
+  const { email, phone } = data;
+
+  // Check if user already exists
+  const { data: existingUser } = await supabase
+    .from("users")
+    .select("id")
+    .or(`email.eq.${email},phone.eq.${phone}`)
+    .maybeSingle();
+
+  if (existingUser) {
+    throw new Error("User already exists with this email or phone");
+  }
+
   const { data: user, error } = await supabase
     .from('users')
     .insert({

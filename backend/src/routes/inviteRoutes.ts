@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { generateInviteCode, joinPartner } from '../controllers/inviteController';
+import { createInvite, joinInvite } from '../controllers/inviteController';
 import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
 
-router.post('/generate', authMiddleware, generateInviteCode);
-router.post('/join', authMiddleware, joinPartner);
+router.post('/create', authMiddleware, createInvite);
+router.post('/join', authMiddleware, joinInvite);
 
 export default router;

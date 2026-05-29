@@ -12,6 +12,21 @@ export const sendOtp = async (req: Request, res: Response) => {
   }
 
   try {
+    // Rate limiting: Check if an OTP was sent recently (e.g., in the last 30 seconds)
+    const { data: existingOtp } = await supabase
+      .from("otp_codes")
+      .select("updated_at")
+      .eq("contact", email)
+      .single();
+
+    if (existingOtp) {
+      const lastSent = new Date(existingOtp.updated_at).getTime();
+      const now = new Date().getTime();
+      if (now - lastSent < 30000) { // 30 seconds cooldown
+        return res.status(429).json({ message: "Please wait 30 seconds before requesting another OTP" });
+      }
+    }
+
     const otp = generateOtp();
 
     // Save to Supabase (otp_codes table)
@@ -20,7 +35,8 @@ export const sendOtp = async (req: Request, res: Response) => {
       .upsert({
         contact: email,
         code: otp,
-        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        updated_at: new Date().toISOString()
       }, { onConflict: 'contact' });
 
     if (error) {
@@ -67,7 +83,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
   }
 
   try {
-    // Find latest OTP for this contact
+    // 1. Verify OTP
     const { data: existingOtp, error: fetchError } = await supabase
       .from("otp_codes")
       .select("*")
@@ -79,40 +95,51 @@ export const verifyOtp = async (req: Request, res: Response) => {
       return res.status(400).json({ verified: false, message: "Invalid or incorrect OTP" });
     }
 
-    // Check expiry
     if (new Date(existingOtp.expires_at) < new Date()) {
       return res.status(400).json({ verified: false, message: "OTP has expired" });
     }
 
-    // Check if user exists
-    const { data: user } = await supabase
+    // 2. Find or Create User
+    let { data: user } = await supabase
       .from("users")
       .select("*")
       .or(`email.eq.${contact},phone.eq.${contact}`)
       .single();
 
-    // Consume OTP (delete it)
-    await supabase.from("otp_codes").delete().eq("id", existingOtp.id);
+    let isNewUser = false;
+    if (!user) {
+      isNewUser = true;
+      const isEmail = contact.includes('@');
+      const { data: newUser, error: createError } = await supabase
+        .from("users")
+        .insert({
+          email: isEmail ? contact : null,
+          phone: !isEmail ? contact : null,
+          relationship_status: 'none'
+        })
+        .select()
+        .single();
 
-    let token = null;
-    if (user) {
-      // Generate session token for existing user
-      token = jwt.sign(
-        { userId: user.id },
-        process.env.JWT_SECRET as string,
-        { expiresIn: "30d" }
-      );
+      if (createError) throw createError;
+      user = newUser;
     }
 
+    // 3. Cleanup OTP
+    await supabase.from("otp_codes").delete().eq("id", existingOtp.id);
+
+    // 4. Token
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET as string, { expiresIn: "30d" });
+
     res.status(200).json({
+      success: true,
       verified: true,
-      userExists: !!user,
+      isNewUser,
       token,
-      user: user || null
+      user
     });
   } catch (error: any) {
     console.error("Verify OTP Error:", error);
-    res.status(500).json({ message: "Verification process failed" });
+    res.status(500).json({ message: "Verification failed" });
   }
 };
 
@@ -161,8 +188,53 @@ export const getProfile = async (req: any, res: Response) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(user);
+    // Resolve partner if couple exists
+    let partner = null;
+    if (user.partner_id) {
+      const { data: partnerData } = await supabase
+        .from("users")
+        .select("id, name, email, phone, couple_id, relationship_status")
+        .eq("id", user.partner_id)
+        .single();
+      partner = partnerData;
+    }
+
+    res.json({ ...user, partner });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch profile" });
+  }
+};
+
+export const updateProfile = async (req: any, res: Response) => {
+  const userId = req.userId;
+  const { name, birthday, gender } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ message: "Name is required" });
+  }
+
+  try {
+    const { data: updatedUser, error } = await supabase
+      .from("users")
+      .update({
+        name,
+        birthday: birthday || null,
+        gender: gender || null,
+        relationship_status: 'solo'
+      })
+      .eq("id", userId)
+      .select("*")
+      .single();
+
+    if (error || !updatedUser) {
+      return res.status(500).json({ message: "Failed to update profile" });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: updatedUser
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update profile" });
   }
 };
