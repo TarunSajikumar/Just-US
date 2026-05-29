@@ -118,11 +118,12 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
 export const signup = async (req: Request, res: Response) => {
   try {
-    const user = await signupUser(req.body);
+    const { user, token } = await signupUser(req.body);
 
     res.status(201).json({
       message: "Signup success",
       user,
+      token
     });
   } catch (error) {
     res.status(500).json({
@@ -143,5 +144,25 @@ export const login = async (req: Request, res: Response) => {
     res.status(400).json({
       message: error.message,
     });
+  }
+};
+
+export const getProfile = async (req: any, res: Response) => {
+  const userId = req.userId;
+
+  try {
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (error || !user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch profile" });
   }
 };

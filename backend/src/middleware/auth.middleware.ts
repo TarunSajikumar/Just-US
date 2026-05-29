@@ -5,7 +5,7 @@ export interface AuthRequest extends Request {
   userId?: string;
 }
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authMiddleware = (req: any, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -18,6 +18,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
 
     req.userId = decoded.userId;
+    req.user = { userId: decoded.userId }; // Compatibility with old controllers
 
     next();
   } catch {
