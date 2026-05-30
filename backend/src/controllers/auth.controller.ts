@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import { signupUser, loginUser } from "../services/auth.service";
 import { generateOtp } from "../services/otp.service";
-import { supabase } from "../config/supabase";
 import { transporter } from "../modules/auth/mail.service";
 import jwt from "jsonwebtoken";
+import Otp from "../models/Otp";
+import User from "../models/User";
 
 export const sendOtp = async (req: Request, res: Response) => {
   const email = req.body.email || req.body.phone;
@@ -13,39 +14,30 @@ export const sendOtp = async (req: Request, res: Response) => {
 
   try {
     // Rate limiting: Check if an OTP was sent recently (e.g., in the last 30 seconds)
-    const { data: existingOtp } = await supabase
-      .from("otp_codes")
-      .select("updated_at")
-      .eq("contact", email)
-      .single();
+    const existingOtp = await Otp.findOne({ contact: email });
 
     if (existingOtp) {
-      const lastSent = new Date(existingOtp.updated_at).getTime();
-      const now = new Date().getTime();
-      if (now - lastSent < 30000) { // 30 seconds cooldown
+      const lastSent = new Date(existingOtp.updatedAt as Date).getTime();
+      if (Date.now() - lastSent < 30000) {
         return res.status(429).json({ message: "Please wait 30 seconds before requesting another OTP" });
       }
     }
 
     const otp = generateOtp();
 
-    // Save to Supabase (otp_codes table)
-    const { error } = await supabase
-      .from("otp_codes")
-      .upsert({
-        contact: email,
-        code: otp,
-        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'contact' });
+    console.log("Generated OTP:", otp);
+    console.log("Contact:", email);
 
-    if (error) {
-      console.error("Supabase UPSERT Error:", error);
-      throw error;
-    }
+    await Otp.findOneAndUpdate(
+      { contact: email },
+      {
+        code: otp,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      },
+      { upsert: true, new: true }
+    );
 
     // Send Email (or SMS in future)
-    // If it's an email, send it
     if (email.includes('@')) {
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
@@ -84,58 +76,51 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
   try {
     // 1. Verify OTP
-    const { data: existingOtp, error: fetchError } = await supabase
-      .from("otp_codes")
-      .select("*")
-      .eq("contact", contact)
-      .eq("code", otp)
-      .single();
+    const existingOtp = await Otp.findOne({ contact });
 
-    if (fetchError || !existingOtp) {
+    console.log("Contact:", contact);
+    console.log("Received OTP:", otp);
+    console.log("Stored OTP:", existingOtp?.code);
+
+    if (!existingOtp) {
+      return res.status(400).json({ verified: false, message: "OTP not found" });
+    }
+
+    if (String(existingOtp.code) !== String(otp)) {
       return res.status(400).json({ verified: false, message: "Invalid or incorrect OTP" });
     }
 
-    if (new Date(existingOtp.expires_at) < new Date()) {
+    if (new Date(existingOtp.expiresAt as Date) < new Date()) {
       return res.status(400).json({ verified: false, message: "OTP has expired" });
     }
 
     // 2. Find or Create User
-    let { data: user } = await supabase
-      .from("users")
-      .select("*")
-      .or(`email.eq.${contact},phone.eq.${contact}`)
-      .single();
+    let user = await User.findOne({
+      $or: [{ email: contact }, { phone: contact }],
+    });
 
     let isNewUser = false;
     if (!user) {
       isNewUser = true;
-      const isEmail = contact.includes('@');
-      const { data: newUser, error: createError } = await supabase
-        .from("users")
-        .insert({
-          email: isEmail ? contact : null,
-          phone: !isEmail ? contact : null,
-          relationship_status: 'none'
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-      user = newUser;
+      user = await User.create({
+        email: contact.includes("@") ? contact : null,
+        phone: !contact.includes("@") ? contact : null,
+        relationship_status: "none",
+      });
     }
 
     // 3. Cleanup OTP
-    await supabase.from("otp_codes").delete().eq("id", existingOtp.id);
+    await Otp.deleteOne({ _id: existingOtp._id });
 
     // 4. Token
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET as string, { expiresIn: "30d" });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET as string, { expiresIn: "30d" });
 
     res.status(200).json({
       success: true,
       verified: true,
       isNewUser,
       token,
-      user
+      user,
     });
   } catch (error: any) {
     console.error("Verify OTP Error:", error);
@@ -150,7 +135,7 @@ export const signup = async (req: Request, res: Response) => {
     res.status(201).json({
       message: "Signup success",
       user,
-      token
+      token,
     });
   } catch (error) {
     res.status(500).json({
@@ -178,28 +163,18 @@ export const getProfile = async (req: any, res: Response) => {
   const userId = req.userId;
 
   try {
-    const { data: user, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    const user = await User.findById(userId);
 
-    if (error || !user) {
+    if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Resolve partner if couple exists
-    let partner = null;
-    if (user.partner_id) {
-      const { data: partnerData } = await supabase
-        .from("users")
-        .select("id, name, email, phone, couple_id, relationship_status")
-        .eq("id", user.partner_id)
-        .single();
-      partner = partnerData;
-    }
+    const partner = user.partner_id
+      ? await User.findById(user.partner_id)
+      : null;
 
-    res.json({ ...user, partner });
+    res.json({ ...user.toObject(), partner });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch profile" });
   }
@@ -214,25 +189,24 @@ export const updateProfile = async (req: any, res: Response) => {
   }
 
   try {
-    const { data: updatedUser, error } = await supabase
-      .from("users")
-      .update({
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
         name,
-        birthday: birthday || null,
-        gender: gender || null,
-        relationship_status: 'solo'
-      })
-      .eq("id", userId)
-      .select("*")
-      .single();
+        birthday,
+        gender,
+        relationship_status: "solo",
+      },
+      { new: true }
+    );
 
-    if (error || !updatedUser) {
+    if (!updatedUser) {
       return res.status(500).json({ message: "Failed to update profile" });
     }
 
     res.status(200).json({
       success: true,
-      user: updatedUser
+      user: updatedUser,
     });
   } catch (error) {
     res.status(500).json({ message: "Failed to update profile" });

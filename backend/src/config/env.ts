@@ -3,11 +3,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const requiredEnv = [
-  "SUPABASE_URL",
-  "SUPABASE_ANON_KEY",
+  "MONGODB_URI",
+  "JWT_SECRET",
   "EMAIL_USER",
   "EMAIL_PASS",
-  "JWT_SECRET"
 ];
 
 requiredEnv.forEach((key) => {
@@ -16,4 +15,10 @@ requiredEnv.forEach((key) => {
   }
 });
 
-export default process.env;
+export default {
+  mongodbUri: process.env.MONGODB_URI!,
+  jwtSecret: process.env.JWT_SECRET!,
+  emailUser: process.env.EMAIL_USER!,
+  emailPass: process.env.EMAIL_PASS!,
+  port: process.env.PORT || 5000,
+};

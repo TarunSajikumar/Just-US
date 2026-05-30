@@ -1,5 +1,6 @@
-import { Response } from 'express';
-import { supabase } from '../config/supabase';
+import { Response } from "express";
+import User from "../models/User";
+import Message from "../models/Message";
 
 /**
  * GET /api/messages/:coupleId
@@ -12,50 +13,37 @@ export const getMessages = async (req: any, res: Response) => {
   const before = req.query.before as string | undefined;
 
   if (!coupleId) {
-    return res.status(400).json({ message: 'coupleId is required' });
+    return res.status(400).json({ message: "coupleId is required" });
   }
 
-  // Verify user belongs to this couple
-  const { data: membership } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', userId)
-    .eq('couple_id', coupleId)
-    .single();
+  try {
+    // Verify user belongs to this couple
+    const user = await User.findOne({ _id: userId, couple_id: coupleId });
 
-  if (!membership) {
-    return res.status(403).json({ message: 'Not authorised for this couple' });
+    if (!user) {
+      return res.status(403).json({ message: "Not authorized for this couple" });
+    }
+
+    let query: any = { couple_id: coupleId };
+    if (before) {
+      query.createdAt = { $lt: new Date(before) };
+    }
+
+    const messages = await Message.find(query).sort({ createdAt: -1 }).limit(limit);
+
+    // Mark messages as read (those not sent by current user)
+    await Message.updateMany(
+      { couple_id: coupleId, sender_id: { $ne: userId }, read: false },
+      { read: true }
+    );
+
+    return res.json({
+      messages: messages.reverse(), // oldest first for display
+    });
+  } catch (error) {
+    console.error("getMessages error:", error);
+    return res.status(500).json({ message: "Failed to fetch messages" });
   }
-
-  let query = supabase
-    .from('messages')
-    .select('id, couple_id, sender_id, message, read, created_at')
-    .eq('couple_id', coupleId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (before) {
-    query = query.lt('created_at', before);
-  }
-
-  const { data: messages, error } = await query;
-
-  if (error) {
-    console.error('getMessages error:', error);
-    return res.status(500).json({ message: 'Failed to fetch messages' });
-  }
-
-  // Mark messages as read
-  await supabase
-    .from('messages')
-    .update({ read: true })
-    .eq('couple_id', coupleId)
-    .neq('sender_id', userId)
-    .eq('read', false);
-
-  return res.json({
-    messages: (messages ?? []).reverse(), // oldest first for display
-  });
 };
 
 /**
@@ -68,35 +56,26 @@ export const createMessage = async (req: any, res: Response) => {
   const { coupleId, message } = req.body;
 
   if (!coupleId || !message?.trim()) {
-    return res.status(400).json({ message: 'coupleId and message are required' });
+    return res.status(400).json({ message: "coupleId and message are required" });
   }
 
-  // Verify user belongs to this couple
-  const { data: membership } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', userId)
-    .eq('couple_id', coupleId)
-    .single();
+  try {
+    // Verify user belongs to this couple
+    const user = await User.findOne({ _id: userId, couple_id: coupleId });
 
-  if (!membership) {
-    return res.status(403).json({ message: 'Not authorised for this couple' });
-  }
+    if (!user) {
+      return res.status(403).json({ message: "Not authorized for this couple" });
+    }
 
-  const { data: newMessage, error } = await supabase
-    .from('messages')
-    .insert({
+    const newMessage = await Message.create({
       couple_id: coupleId,
       sender_id: userId,
       message: message.trim(),
-    })
-    .select()
-    .single();
+    });
 
-  if (error) {
-    console.error('createMessage error:', error);
-    return res.status(500).json({ message: 'Failed to save message' });
+    return res.status(201).json({ message: newMessage });
+  } catch (error) {
+    console.error("createMessage error:", error);
+    return res.status(500).json({ message: "Failed to save message" });
   }
-
-  return res.status(201).json({ message: newMessage });
 };
