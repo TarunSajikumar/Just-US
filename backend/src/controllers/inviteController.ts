@@ -2,6 +2,7 @@ import { Response } from "express";
 import Invite from "../models/Invite";
 import Couple from "../models/Couple";
 import User from "../models/User";
+import { unlockAchievement } from "../services/achievement.service";
 
 /**
  * POST /api/invite/create
@@ -89,6 +90,9 @@ export const joinInvite = async (req: any, res: Response) => {
         relationship_status: "couple",
       }),
     ]);
+
+    // Unlock FIRST_CONNECTION achievement
+    await unlockAchievement(coupleId.toString(), "FIRST_CONNECTION");
 
     return res.json({
       success: true,

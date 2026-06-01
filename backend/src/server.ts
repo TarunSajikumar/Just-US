@@ -20,8 +20,9 @@ setupSockets(io);
 const start = async () => {
   try {
     await connectDB();
-    server.listen(PORT, () => {
+    server.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📍 Listening on http://0.0.0.0:${PORT}`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);

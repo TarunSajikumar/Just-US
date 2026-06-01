@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { getCoupleProfile } from "../controllers/couple.controller";
-import { authenticate } from "../middleware/auth.middleware";
+import { getCoupleProfile, updateRelationshipDate } from "../controllers/couple.controller";
+import { authMiddleware } from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.get("/me", authenticate, getCoupleProfile);
+router.get("/profile", authMiddleware, getCoupleProfile);
+router.put("/relationship-date", authMiddleware, updateRelationshipDate);
 
 export default router;

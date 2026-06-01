@@ -1,10 +1,12 @@
 import { Request, Response } from "express";
 import { signupUser, loginUser } from "../services/auth.service";
 import { generateOtp } from "../services/otp.service";
-import { transporter } from "../modules/auth/mail.service";
+import { sendOtpEmail } from "../modules/auth/mail.service";
+import env from "../config/env";
 import jwt from "jsonwebtoken";
 import Otp from "../models/Otp";
 import User from "../models/User";
+import Couple from "../models/Couple";
 
 export const sendOtp = async (req: Request, res: Response) => {
   const email = req.body.email || req.body.phone;
@@ -18,17 +20,23 @@ export const sendOtp = async (req: Request, res: Response) => {
 
     if (existingOtp) {
       const lastSent = new Date(existingOtp.updatedAt as Date).getTime();
-      if (Date.now() - lastSent < 30000) {
-        return res.status(429).json({ message: "Please wait 30 seconds before requesting another OTP" });
+      const timeSinceLastRequest = Date.now() - lastSent;
+      
+      if (timeSinceLastRequest < 30000) {
+        const secondsToWait = Math.ceil((30000 - timeSinceLastRequest) / 1000);
+        return res.status(429).json({ 
+          message: `Please wait ${secondsToWait} seconds before requesting another OTP`,
+          retryAfter: secondsToWait 
+        });
       }
     }
 
     const otp = generateOtp();
 
-    console.log("Generated OTP:", otp);
-    console.log("Contact:", email);
+    console.log("🔐 Generated OTP:", otp);
+    console.log("📧 Contact:", email);
 
-    await Otp.findOneAndUpdate(
+    const otpRecord = await Otp.findOneAndUpdate(
       { contact: email },
       {
         code: otp,
@@ -37,32 +45,33 @@ export const sendOtp = async (req: Request, res: Response) => {
       { upsert: true, new: true }
     );
 
-    // Send Email (or SMS in future)
+    // Send Email 
     if (email.includes('@')) {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: "JusT us Verification Code 💌",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 20px;">
-            <h2 style="color: #ff4d8d; text-align: center;">💌 Welcome to JusT us</h2>
-            <p style="font-size: 16px; text-align: center;">Your secure verification code:</p>
-            <div style="background: #fff0f5; padding: 20px; border-radius: 15px; text-align: center; font-size: 32px; letter-spacing: 8px; font-weight: bold; margin: 20px 0; color: #ff4d8d; border: 2px dashed #ff4d8d;">
-              ${otp}
-            </div>
-            <p style="font-size: 14px; text-align: center; color: #777;">This OTP will expire in 5 minutes.</p>
-            <p style="font-size: 14px; text-align: center; color: #777;">⚠️ Never share your OTP with anyone.</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-            <p style="text-align: center; font-size: 14px; color: #999;">With love,<br/>Team JusT us ❤️</p>
-          </div>
-        `,
-      });
+      try {
+        await sendOtpEmail(email, otp);
+        console.log("✅ OTP email sent successfully to:", email);
+      } catch (emailError: any) {
+        console.error("❌ Email sending failed:", emailError.message);
+        
+        // Still save OTP for fallback, but inform user
+        return res.status(503).json({ 
+          message: "Email service temporarily unavailable. Please try again.",
+          error: emailError.message 
+        });
+      }
     }
 
-    res.status(200).json({ message: "OTP sent successfully" });
+    res.status(200).json({ 
+      message: "OTP sent successfully",
+      contact: email,
+      expiresIn: 300 // 5 minutes in seconds
+    });
   } catch (error: any) {
-    console.error("Send OTP Error:", error);
-    res.status(500).json({ message: "Failed to send OTP", error: error.message });
+    console.error("❌ Send OTP Error:", error);
+    res.status(500).json({ 
+      message: "Failed to send OTP", 
+      error: error.message 
+    });
   }
 };
 
@@ -169,12 +178,31 @@ export const getProfile = async (req: any, res: Response) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Resolve partner if couple exists
-    const partner = user.partner_id
-      ? await User.findById(user.partner_id)
-      : null;
+    // Resolve partner and couple if couple exists
+    let partner = null;
+    let relationshipStartDate = null;
+    let anniversaryDate = null;
+    let nextMeetDate = null;
 
-    res.json({ ...user.toObject(), partner });
+    if (user.couple_id) {
+      const [partnerData, coupleData] = await Promise.all([
+        User.findById(user.partner_id),
+        Couple.findById(user.couple_id)
+      ]);
+      partner = partnerData;
+      relationshipStartDate = coupleData?.relationshipStartDate || coupleData?.createdAt;
+      anniversaryDate = coupleData?.anniversaryDate || null;
+      nextMeetDate = coupleData?.nextMeetDate || null;
+    }
+
+    res.json({
+      ...user.toObject(),
+      partner,
+      relationshipStartDate,
+      anniversaryDate,
+      nextMeetDate,
+      partnerPingMessage: user.partnerPingMessage
+    });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch profile" });
   }

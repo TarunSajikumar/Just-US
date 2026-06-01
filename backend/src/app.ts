@@ -7,6 +7,12 @@ import inviteRoutes from "./routes/inviteRoutes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import messagesRoutes from "./routes/messages.routes";
 import memoriesRoutes from "./routes/memories.routes";
+import coupleRoutes from "./routes/couple.routes";
+import userRoutes from "./routes/user.routes";
+import notificationRoutes from "./routes/notification.routes";
+import moodRoutes from "./routes/mood.routes";
+import achievementRoutes from "./routes/achievement.routes";
+import noteRoutes from "./routes/note.routes";
 import { authMiddleware } from "./middleware/auth.middleware";
 
 const app = express();
@@ -25,6 +31,12 @@ app.use("/api/invite", inviteRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/messages", messagesRoutes);
 app.use("/api/memories", memoriesRoutes);
+app.use("/api/couple", coupleRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/moods", moodRoutes);
+app.use("/api/achievements", achievementRoutes);
+app.use("/api/notes", noteRoutes);
 
 app.get("/api/me", authMiddleware, (req: any, res) => {
   res.json({ userId: req.userId });

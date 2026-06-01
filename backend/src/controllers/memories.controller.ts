@@ -1,6 +1,7 @@
 import { Response } from "express";
 import User from "../models/User";
 import Memory from "../models/Memory";
+import { unlockAchievement } from "../services/achievement.service";
 
 /**
  * GET /api/memories/:coupleId
@@ -62,6 +63,9 @@ export const createMemory = async (req: any, res: Response) => {
       image_url: imageUrl,
       caption: caption?.trim() || null,
     });
+
+    // Unlock FIRST_MEMORY achievement
+    await unlockAchievement(coupleId, "FIRST_MEMORY");
 
     return res.status(201).json({ memory });
   } catch (error) {

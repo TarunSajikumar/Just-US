@@ -1,6 +1,7 @@
 import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import Message from "../models/Message";
+import User from "../models/User";
 
 /** Deterministic room ID — always the same for two users regardless of who connects first */
 const roomId = (a: string, b: string) => [a, b].sort().join("-");
@@ -22,8 +23,21 @@ export const setupSockets = (io: Server) => {
     console.log("Socket connected — userId:", userId ?? "(guest)");
 
     if (userId) {
+      User.findByIdAndUpdate(userId, { isOnline: true }).catch((err) =>
+        console.error("Error setting isOnline on connect:", err)
+      );
       socket.broadcast.emit("user_status_change", { userId, status: "online" });
     }
+
+    socket.on("user-online", async (id: string) => {
+      userId = id;
+      await User.findByIdAndUpdate(id, {
+        isOnline: true,
+      }).catch((err) => console.error("Error setting isOnline on user-online:", err));
+
+      socket.join(id);
+      socket.broadcast.emit("user_status_change", { userId: id, status: "online" });
+    });
 
     // ── Join room ─────────────────────────────────────────
     // Client sends: { partnerId: string }
@@ -85,10 +99,16 @@ export const setupSockets = (io: Server) => {
     socket.on("disconnect", () => {
       console.log("Socket disconnected — userId:", userId ?? "(guest)");
       if (userId) {
+        const lastSeen = new Date();
+        User.findByIdAndUpdate(userId, {
+          isOnline: false,
+          lastSeen,
+        }).catch((err) => console.error("Error setting offline on disconnect:", err));
+
         socket.broadcast.emit("user_status_change", {
           userId,
           status: "offline",
-          lastSeen: new Date(),
+          lastSeen,
         });
       }
     });
