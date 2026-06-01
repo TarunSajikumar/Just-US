@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile-app",
+    "name": "JUST-us",
     "slug": "mobile-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -30,7 +30,7 @@
         {
           "backgroundColor": "#208AEF",
           "android": {
-            "image": "./assets/images/expo-logo.png",
+            "image": "./assets/images/logo.png",
             "imageWidth": 76
           }
         }
