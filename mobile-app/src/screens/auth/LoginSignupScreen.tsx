@@ -12,25 +12,47 @@ import {
 } from 'react-native';
 import { COLORS } from '../../theme/colors';
 import { authService } from '../../services/authService';
+import { useAuthStore, saveAuthData } from '../../store/authStore';
 
 export default function LoginSignupScreen({ navigation }: any) {
   const [contact, setContact] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const { setToken, setUser } = useAuthStore();
 
   const handleSendOtp = async () => {
     if (!contact.trim()) return;
     setIsSending(true);
 
     try {
-      await authService.sendOtp(contact.trim());
+      const response = await authService.sendOtp(contact.trim());
+
+      if (response.userExists) {
+        // Direct Login Flow for existing users
+        const loginData = await authService.login(contact.trim());
+        const { token, user } = loginData;
+
+        // Update the store and local storage
+        setToken(token);
+        setUser(user);
+        await saveAuthData(token, user);
+
+        // Manually trigger a fresh profile sync to ensure partner/couple data is loaded
+        try {
+          await authService.me();
+        } catch (meError) {
+          console.error("Post-login profile sync failed", meError);
+        }
+
+        setIsSending(false);
+        return;
+      }
+
       setIsSending(false);
       navigation.navigate('OTP', { contact: contact.trim() });
     } catch (err: any) {
-      console.error('Send OTP error', err);
+      console.error('Login/Signup error', err);
       setIsSending(false);
-      // Even on error, we might want to navigate to OTP if the error is just rate limiting but they have a code
-      // But usually we just show an alert
-      alert(err?.response?.data?.message || "Failed to send OTP");
+      alert(err?.response?.data?.message || "Failed to continue. Please try again.");
     }
   };
 

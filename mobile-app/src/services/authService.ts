@@ -15,6 +15,12 @@ export const authService = {
     return response.data;
   },
 
+  /** POST /api/auth/login → { token, user } */
+  login: async (contact: string) => {
+    const response = await api.post('/auth/login', { email: contact });
+    return response.data;
+  },
+
   /** POST /api/auth/signup → { user, token } */
   signup: async (data: { name: string; email?: string; phone?: string }) => {
     const response = await api.post('/auth/signup', data);

@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes"/>
+<meta name="theme-color" content="#0C0C0E"/>
+<meta name="description" content="JustUs – A private, encrypted space built exclusively for couples. Secure chat, memory vault, love timeline and milestones – all 100% ad-free."/>
+<meta property="og:title" content="JustUs – Your Private Couple's Space"/>
+<meta property="og:description" content="A private universe for your love — encrypted, ad-free, and forever yours."/>
+<title>JustUs – Your Private Couple's Space</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Jost:wght@200;300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* ─── reset ─── */
+*, *::before, *::after {
+  margin: 0; padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── tokens ─── */
+:root {
+  --rose:       #C9A96E;
+  --rose-deep:  #A8865A;
+  --rose-bright:#E0C080;
+  --blush:      #EDD9B4;
+  --petal:      #F7EFE0;
+  --cream:      #F8F6F2;
+  --night:      #0C0C0E;
+  --night-light:#161618;
+  --ember:      #1E1C18;
+  --gold:       #B8914A;
+  --gold-light: #D4A85C;
+  --glass:      rgba(12,12,14,0.80);
+  --ease:       cubic-bezier(0.2,0.9,0.4,1.1);
+}
+
+/* ─── scroll progress ─── */
+#scroll-progress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2.5px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--rose), var(--gold-light), var(--rose-bright));
+  z-index: 9999;
+  transition: width 0.05s linear;
+  box-shadow: 0 0 10px var(--rose);
+}
+
+html { scroll-behavior: smooth; overflow-x: hidden; font-size: 16px; }
+
+body {
+  background: var(--night);
+  color: var(--cream);
+  font-family: 'Jost', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+  cursor: none;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* grain */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 1;
+  opacity: 0.35; mix-blend-mode: overlay;
+}
+
+/* touch cursor hide */
+@media (hover: none) and (pointer: coarse) {
+  body { cursor: auto; }
+  #cursor-dot, #cursor-ring { display: none; }
+}
+
+#cursor-dot {
+  position: fixed; width: 7px; height: 7px;
+  background: var(--rose-bright);
+  border-radius: 50%; pointer-events: none;
+  z-index: 10000; transform: translate(-50%,-50%);
+  transition: transform 0.1s ease, opacity 0.15s;
+  mix-blend-mode: lighten;
+}
+
+#cursor-ring {
+  position: fixed; width: 42px; height: 42px;
+  border: 1.5px solid rgba(201,169,110,0.5);
+  border-radius: 50%; pointer-events: none;
+  z-index: 9999; transform: translate(-50%,-50%);
+  transition: width 0.25s var(--ease), height 0.25s var(--ease),
+              border-color 0.2s, transform 0.18s var(--ease);
+  backdrop-filter: blur(2px);
+}
+
+#cursor-ring.expand {
+  width: 60px; height: 60px;
+  border-color: rgba(224,192,128,0.7);
+  background: rgba(201,169,110,0.06);
+}
+
+/* canvas */
+#canvas-bg {
+  position: fixed; inset: 0;
+  width: 100%; height: 100%;
+  z-index: 0; pointer-events: none;
+}
+
+.wrap {
+  position: relative; z-index: 4;
+  max-width: 1400px; margin: 0 auto;
+  padding: 0 clamp(1rem, 5vw, 4rem);
+}
+
+/* ─── NAV ─── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 500;
+  padding: 0.9rem clamp(1rem,5vw,4rem);
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(12,12,14,0.75);
+  backdrop-filter: blur(28px) saturate(200%);
+  border-bottom: 1px solid rgba(201,169,110,0.18);
+  transition: padding 0.3s ease, background 0.3s;
+}
+
+nav.scrolled {
+  padding: 0.6rem clamp(1rem,5vw,4rem);
+  background: rgba(8,8,10,0.95);
+}
+
+.nav-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.4rem,5vw,1.9rem); font-weight: 600;
+  background: linear-gradient(135deg,#FFFFFF,var(--blush),var(--rose));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  letter-spacing: 0.04em;
+}
+
+.nav-pill {
+  font-size: clamp(0.55rem,2.5vw,0.7rem);
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--blush);
+  border: 1px solid rgba(201,169,110,0.35);
+  padding: 0.4rem clamp(0.8rem,3vw,1.2rem); border-radius: 60px;
+  background: rgba(201,169,110,0.08); backdrop-filter: blur(4px);
+  white-space: nowrap; animation: navPillGlow 3s infinite alternate;
+}
+
+@keyframes navPillGlow {
+  from { box-shadow: 0 0 0 transparent; }
+  to   { box-shadow: 0 0 14px rgba(201,169,110,0.2); }
+}
+
+.nav-cta {
+  background: linear-gradient(115deg, var(--rose), var(--rose-deep));
+  color: var(--cream);
+  padding: 0.55rem clamp(1rem,4vw,1.6rem);
+  border-radius: 40px; border: none;
+  font-family: 'Jost', sans-serif;
+  font-size: clamp(0.65rem,3vw,0.75rem); letter-spacing: 0.1em;
+  text-transform: uppercase; font-weight: 500;
+  cursor: none; text-decoration: none;
+  transition: all 0.28s ease;
+  box-shadow: 0 6px 20px rgba(201,169,110,0.25);
+  white-space: nowrap; position: relative; overflow: hidden;
+}
+
+.nav-cta::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(115deg, rgba(255,255,255,0.12), transparent);
+  opacity: 0; transition: opacity 0.2s;
+}
+
+@media (hover: hover) {
+  .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(201,169,110,0.4); }
+  .nav-cta:hover::after { opacity: 1; }
+}
+
+/* ─── HERO ─── */
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px,1fr));
+  align-items: center;
+  gap: clamp(1.5rem,5vw,3rem);
+  padding: clamp(5rem,15vh,8rem) 0 clamp(3rem,8vh,5rem);
+  position: relative;
+}
+
+.hero-text { position: relative; z-index: 3; text-align: left; }
+
+@media (max-width: 768px) {
+  .hero-text { text-align: center; }
+  .hero-vis { order: -1; }
+  .btn-row { justify-content: center; }
+  .trust-row { justify-content: center; }
+}
+
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 0.7rem;
+  font-size: clamp(0.6rem,3vw,0.7rem); letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--gold-light);
+  margin-bottom: 1.5rem;
+  background: rgba(201,169,110,0.08); padding: 0.35rem 1rem 0.35rem 0.9rem;
+  border-radius: 40px; border: 1px solid rgba(201,169,110,0.2);
+}
+
+.eyebrow-dot {
+  width: 7px; height: 7px; background: var(--rose);
+  border-radius: 50%; animation: pulseGlow 2s infinite;
+}
+
+@keyframes pulseGlow {
+  0%,100% { opacity:0.5; transform:scale(1); box-shadow:0 0 0 transparent; }
+  50% { opacity:1; transform:scale(1.25); box-shadow:0 0 8px var(--rose); }
+}
+
+.hero h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.6rem,8vw,6.4rem); font-weight: 300;
+  line-height: 1.06; margin-bottom: 1.2rem;
+  background: linear-gradient(145deg,#FFFFFF,var(--blush) 45%,var(--rose) 90%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+.hero h1 em { font-style: italic; }
+
+.hero-sub {
+  font-size: clamp(0.9rem,3.5vw,1rem); line-height: 1.7;
+  color: rgba(251,244,239,0.65);
+  max-width: 44ch; margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+  .hero-sub { max-width: 100%; margin-left: auto; margin-right: auto; }
+}
+
+.btn-row {
+  display: flex; gap: clamp(0.8rem,4vw,1.4rem);
+  align-items: center; flex-wrap: wrap; margin-bottom: 1.5rem;
+}
+
+.btn-hero {
+  display: inline-flex; align-items: center; gap: 0.7rem;
+  background: linear-gradient(115deg, #C9A96E, #8A6835);
+  color: #0C0C0E;
+  padding: 0.9rem clamp(1.2rem,5vw,2.2rem);
+  border-radius: 48px; font-size: clamp(0.8rem,3.5vw,0.92rem); font-weight: 500;
+  text-decoration: none; transition: all 0.3s var(--ease);
+  box-shadow: 0 12px 32px rgba(201,169,110,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+  position: relative; overflow: hidden;
+}
+
+.btn-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%); transition: transform 0.5s ease;
+}
+
+@media (hover: hover) {
+  .btn-hero:hover { transform: translateY(-3px); box-shadow: 0 20px 44px rgba(201,169,110,0.45); }
+  .btn-hero:hover::before { transform: translateX(100%); }
+}
+
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  color: rgba(251,244,239,0.55); font-size: clamp(0.75rem,3vw,0.88rem);
+  border-bottom: 1px solid rgba(251,244,239,0.25); padding-bottom: 3px;
+  text-decoration: none; transition: color 0.2s, border-color 0.2s;
+}
+
+@media (hover: hover) {
+  .btn-ghost:hover { color: var(--cream); border-color: rgba(251,244,239,0.5); }
+}
+
+.trust-row {
+  display: flex; gap: clamp(1rem,4vw,2rem); flex-wrap: wrap;
+  font-size: clamp(0.58rem,2.5vw,0.68rem); letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgba(251,244,239,0.38);
+  align-items: center;
+}
+
+.trust-row span { display: flex; align-items: center; gap: 0.4rem; }
+
+.trust-dot {
+  width: 5px; height: 5px;
+  background: var(--rose); border-radius: 50%; opacity: 0.7;
+}
+
+/* ─── PHONE MOCKUP ─── */
+.hero-vis {
+  position: relative; z-index: 2;
+  display: flex; justify-content: center; align-items: center;
+}
+
+.phone-rig {
+  position: relative;
+  animation: floatGlide 7s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+@keyframes floatGlide {
+  0%,100% { transform: translateY(0px) rotate(-1.2deg); }
+  50% { transform: translateY(-14px) rotate(-0.4deg); }
+}
+
+.phone-glow {
+  position: absolute; inset: -30px;
+  background: radial-gradient(ellipse, rgba(201,169,110,0.35), rgba(184,145,74,0) 72%);
+  border-radius: 60%; filter: blur(20px);
+  animation: softPulse 4s infinite alternate;
+}
+
+@keyframes softPulse {
+  0% { opacity: 0.5; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1.08); }
+}
+
+.phone {
+  width: clamp(185px,45vw,255px);
+  height: clamp(370px,90vw,510px);
+  background: linear-gradient(155deg,#252520,#0C0C0E);
+  border-radius: clamp(32px,8vw,50px);
+  padding: clamp(10px,2.5vw,16px);
+  border: 1px solid rgba(201,169,110,0.25);
+  box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  position: relative; z-index: 2;
+}
+
+.phone-screen {
+  width: 100%; height: 100%;
+  background: radial-gradient(ellipse at 30% 20%,#1E1E1A,#0A0A0C);
+  border-radius: clamp(24px,6vw,38px);
+  overflow: hidden; display: flex; flex-direction: column;
+  padding: clamp(10px,3vw,16px) clamp(8px,2vw,12px); gap: 6px;
+}
+
+.pstatus {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: clamp(5px,1.5vw,7px); color: rgba(251,244,239,0.6);
+  font-family: 'Jost',sans-serif; font-weight: 400;
+  padding: 0 2px;
+}
+
+.pheader {
+  font-family: 'Cormorant Garamond',serif;
+  font-size: clamp(10px,2.5vw,13.5px); font-weight: 600;
+  color: var(--cream); letter-spacing: 0.02em;
+  display: flex; flex-direction: column; gap: 1px;
+}
+
+.pheader small {
+  font-size: clamp(5px,1.5vw,6.5px); color: var(--blush);
+  font-family: 'Jost',sans-serif; font-weight: 300; letter-spacing: 0.05em;
+}
+
+.divider-line {
+  height: 1px;
+  background: linear-gradient(90deg,transparent,rgba(201,169,110,0.3),transparent);
+  margin: 2px 0;
+}
+
+.chat-area { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+
+.cb {
+  font-size: clamp(6px,1.8vw,7.5px);
+  padding: 5px 9px;
+  border-radius: 12px 12px 12px 4px;
+  background: rgba(30,30,26,0.9);
+  color: rgba(251,244,239,0.9);
+  max-width: 80%;
+  font-family: 'Jost',sans-serif; font-weight: 400;
+}
+
+.cb.me {
+  align-self: flex-end;
+  background: linear-gradient(135deg,rgba(201,169,110,0.55),rgba(168,134,90,0.6));
+  border-radius: 12px 12px 4px 12px;
+}
+
+.memory-row {
+  display: flex; gap: 5px; margin-top: 4px;
+}
+
+.mthumb {
+  flex: 1;
+  height: clamp(40px,10vw,54px);
+  border-radius: 8px;
+  background: linear-gradient(135deg,rgba(40,38,30,0.9),rgba(20,20,18,0.8));
+  border: 1px solid rgba(201,169,110,0.2);
+  position: relative; overflow: hidden;
+  display: flex; align-items: flex-end;
+}
+
+.mthumb::after {
+  content: attr(data-label);
+  font-size: 4.5px; color: rgba(251,244,239,0.6);
+  padding: 3px 5px;
+  font-family: 'Jost',sans-serif;
+  background: rgba(0,0,0,0.4); width: 100%;
+}
+
+.mthumb::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg,
+    rgba(201,169,110,0.15) 0%,
+    rgba(224,192,128,0.1) 50%,
+    rgba(201,169,110,0.08) 100%
+  );
+}
+
+/* floating pills */
+@media (max-width: 680px) { .fpill { display: none; } }
+
+.fpill {
+  position: absolute;
+  background: rgba(14,14,14,0.92);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(201,169,110,0.25);
+  border-radius: 60px; padding: 0.5rem 1rem;
+  font-size: clamp(0.6rem,2vw,0.7rem); white-space: nowrap;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+  animation: pillFloat 6s ease-in-out infinite;
+}
+
+.fpill-1 { top: 5%; right: -15%; animation-delay: 0s; }
+.fpill-2 { bottom: 28%; left: -20%; animation-delay: -2s; }
+.fpill-3 { bottom: 12%; right: -12%; animation-delay: -4s; }
+
+@keyframes pillFloat {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@media (max-width: 900px) {
+  .fpill-1 { right: -5%; }
+  .fpill-2 { left: -8%; }
+  .fpill-3 { right: -5%; }
+}
+
+/* ─── STATS BAR ─── */
+.stats-bar {
+  position: relative; z-index: 4;
+  display: flex; justify-content: center;
+  gap: clamp(1rem,6vw,4rem); flex-wrap: wrap;
+  padding: clamp(1.8rem,5vw,3rem) clamp(1rem,5vw,2rem);
+  border-top: 1px solid rgba(201,169,110,0.12);
+  border-bottom: 1px solid rgba(201,169,110,0.12);
+  background: rgba(12,12,14,0.6);
+  backdrop-filter: blur(12px);
+}
+
+.stat { text-align: center; }
+
+.sval {
+  font-family: 'Cormorant Garamond',serif;
+  font-size: clamp(1.8rem,6vw,2.8rem); font-weight: 300;
+  background: linear-gradient(135deg, #FFFFFF, var(--blush));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  line-height: 1;
+}
+
+.slabel {
+  font-size: clamp(0.55rem,2.5vw,0.66rem);
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(251,244,239,0.4); margin-top: 0.3rem;
+}
+
+.sdiv {
+  width: 1px; height: clamp(2rem,6vw,3.5rem);
+  background: linear-gradient(to bottom,transparent,rgba(201,169,110,0.35),transparent);
+  align-self: center;
+}
+
+@media (max-width: 550px) { .sdiv { display: none; } }
+
+/* ─── SECTION SHARED ─── */
+.sec-eyebrow {
+  font-size: clamp(0.58rem,2.5vw,0.68rem);
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--gold-light); margin-bottom: 0.8rem;
+  display: inline-flex; align-items: center; gap: 0.6rem;
+}
+
+.sec-eyebrow::before {
+  content: ''; display: block;
+  width: 28px; height: 1px;
+  background: var(--gold);
+}
+
+.sec-title {
+  font-family: 'Cormorant Garamond',serif;
+  font-size: clamp(2rem,7vw,4.2rem); font-weight: 300; line-height: 1.1;
+  margin-bottom: 1rem;
+  background: linear-gradient(140deg,#FFFFFF,var(--blush));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+.sec-title em { font-style: italic; color: transparent; }
+
+.sec-sub {
+  font-size: clamp(0.8rem,3vw,0.95rem);
+  line-height: 1.7; color: rgba(251,244,239,0.55);
+  max-width: 52ch; margin: 0 auto 3rem;
+}
+
+.section-header { text-align: center; margin-bottom: 3rem; }
+
+/* ─── FEATURES ─── */
+.features-section { padding: clamp(4rem,12vw,9rem) 0; }
+
+.feat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(270px,1fr));
+  gap: 1px; max-width: 1100px; margin: 0 auto;
+  background: rgba(201,169,110,0.08);
+  border-radius: 28px; overflow: hidden;
+}
+
+.feat {
+  padding: clamp(1.8rem,5vw,2.8rem) clamp(1.4rem,4vw,2rem);
+  background: rgba(14,14,12,0.85);
+  transition: background 0.35s, transform 0.3s;
+  position: relative; overflow: hidden;
+}
+
+.feat::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 0% 0%, rgba(201,169,110,0.08), transparent 70%);
+  opacity: 0; transition: opacity 0.4s;
+}
+
+@media (hover: hover) {
+  .feat:hover { background: rgba(24,24,20,0.98); }
+  .feat:hover::before { opacity: 1; }
+  .feat:hover .feat-accent { width: 100%; }
+}
+
+.feat-accent {
+  position: absolute; bottom: 0; left: 0; height: 2px;
+  background: linear-gradient(90deg, var(--rose), var(--gold));
+  transition: width 0.45s ease; width: 0%;
+}
+
+.feat-icon {
+  font-size: clamp(1.6rem,6vw,2.2rem); margin-bottom: 1.1rem;
+  display: block;
+  filter: drop-shadow(0 4px 12px rgba(201,169,110,0.35));
+}
+
+.feat h3 {
+  font-family: 'Cormorant Garamond',serif;
+  font-size: clamp(1.15rem,4vw,1.4rem); font-weight: 600;
+  margin-bottom: 0.5rem; color: var(--cream);
+}
+
+.feat p {
+  font-size: clamp(0.75rem,2.8vw,0.82rem);
+  line-height: 1.65; color: rgba(251,244,239,0.5);
+}
+
+/* ─── HOW IT WORKS ─── */
+.how-section { padding: clamp(4rem,12vw,9rem) 0; }
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+  gap: clamp(1.5rem,5vw,3rem);
+  max-width: 1000px; margin: 0 auto;
+  text-align: center; position: relative;
+}
+
+/* connector line (desktop only) */
+.steps::before {
+  content: '';
+  position: absolute; top: 35px; left: 10%; right: 10%; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(201,169,110,0.3), transparent);
+  pointer-events: none; z-index: 0;
+}
+
+@media (max-width: 768px) { .steps::before { display: none; } }
+
+.step { position: relative; z-index: 1; }
+
+.step-n {
+  width: clamp(52px,12vw,72px); height: clamp(52px,12vw,72px);
+  font-size: clamp(1.1rem,3.5vw,1.4rem);
+  margin: 0 auto 1.2rem;
+  font-family: 'Cormorant Garamond',serif; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg,rgba(201,169,110,0.15),rgba(60,52,30,0.4));
+  border: 1px solid rgba(201,169,110,0.35);
+  color: var(--blush);
+  box-shadow: 0 0 30px rgba(201,169,110,0.1);
+  transition: all 0.3s;
+}
+
+@media (hover: hover) {
+  .step:hover .step-n {
+    background: linear-gradient(135deg,rgba(201,169,110,0.4),rgba(90,72,30,0.65));
+    box-shadow: 0 0 40px rgba(201,169,110,0.3);
+    transform: scale(1.08);
+  }
+}
+
+.step h4 {
+  font-family: 'Cormorant Garamond',serif;
+  font-size: clamp(1rem,4vw,1.25rem); font-weight: 600;
+  color: var(--cream); margin-bottom: 0.5rem;
+}
+
+.step p {
+  font-size: clamp(0.7rem,2.8vw,0.8rem);
+  color: rgba(251,244,239,0.45); line-height: 1.65;
+}
+
+/* ─── TESTIMONIALS ─── */
+.testimonials-section { padding: clamp(4rem,12vw,9rem) 0; overflow: hidden; }
+
+.testi-track-wrap { overflow: hidden; position: relative; }
+
+.testi-track-wrap::before,
+.testi-track-wrap::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 80px; z-index: 2;
+  pointer-events: none;
+}
+
+.testi-track-wrap::before {
+  left: 0;
+  background: linear-gradient(to right, var(--night), transparent);
+}
+
+.testi-track-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, var(--night), transparent);
+}
+
+.testi-track {
+  display: flex; gap: 1.5rem;
+  animation: scrollLeft 32s linear infinite;
+  width: max-content;
+}
+
+.testi-track:hover { animation-play-state: paused; }
+
+@keyframes scrollLeft {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.tcard {
+  background: rgba(18,18,16,0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(201,169,110,0.15);
+  border-radius: 20px; padding: 1.6rem 1.8rem;
+  min-width: 280px; max-width: 300px;
+  transition: transform 0.3s, border-color 0.3s;
+}
+
+@media (hover: hover) {
+  .tcard:hover { transform: translateY(-4px); border-color: rgba(201,169,110,0.4); }
+}
+
+.tcard-stars { color: #F5C542; font-size: 0.85rem; letter-spacing: 0.05em; margin-bottom: 0.8rem; }
+
+.tcard-quote {
+  font-size: 0.82rem; line-height: 1.7;
+  color: rgba(251,244,239,0.7); margin-bottom: 1rem;
+  font-style: italic;
+}
+
+.tcard-author {
+  display: flex; align-items: center; gap: 0.75rem;
+}
+
+.tcard-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  background: linear-gradient(135deg,rgba(201,169,110,0.25),rgba(60,50,20,0.5));
+  border: 1px solid rgba(201,169,110,0.3);
+  flex-shrink: 0;
+}
+
+.tcard-name {
+  font-size: 0.78rem; font-weight: 500; color: var(--cream);
+}
+
+.tcard-sub {
+  font-size: 0.68rem; color: rgba(251,244,239,0.38);
+  margin-top: 1px;
+}
+
+/* ─── DOWNLOAD ─── */
+.dl-section {
+  padding: clamp(4rem,12vw,9rem) 0 clamp(5rem,14vw,10rem);
+  text-align: center; position: relative;
+}
+
+.dl-glow {
+  position: absolute; top: 40%; left: 50%;
+  width: 80vw; height: 80vw;
+  transform: translate(-50%,-50%);
+  background: radial-gradient(circle,rgba(201,169,110,0.12),transparent 70%);
+  filter: blur(60px);
+  animation: rotateGlow 14s infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes rotateGlow {
+  0% { opacity: 0.4; transform: translate(-50%,-50%) scale(1); }
+  100% { opacity: 0.85; transform: translate(-50%,-50%) scale(1.2); }
+}
+
+.dl-card {
+  display: inline-block;
+  background: rgba(16,16,14,0.85);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(201,169,110,0.25);
+  border-radius: clamp(32px,8vw,48px);
+  padding: clamp(2rem,6vw,3.5rem) clamp(1.8rem,8vw,4rem);
+  position: relative; z-index: 3;
+  width: 100%; max-width: 520px; margin: 0 auto;
+  box-shadow: 0 0 80px rgba(201,169,110,0.08);
+}
+
+.dl-card-top {
+  font-size: 2.6rem; margin-bottom: 0.6rem; display: block;
+  filter: drop-shadow(0 4px 16px rgba(201,169,110,0.4));
+}
+
+.dl-card h3 {
+  font-family: 'Cormorant Garamond',serif;
+  font-size: clamp(1.4rem,5vw,1.8rem); font-weight: 600;
+  color: var(--cream); margin-bottom: 0.4rem;
+}
+
+.dl-card .dl-meta {
+  font-size: clamp(0.68rem,2.5vw,0.76rem);
+  color: rgba(251,244,239,0.4); letter-spacing: 0.05em;
+  margin-bottom: 1.4rem;
+}
+
+.btn-dl {
+  display: inline-flex; align-items: center; gap: 0.7rem;
+  background: linear-gradient(110deg,#C9A96E,#8A6835);
+  color: #0C0C0E;
+  padding: 0.9rem clamp(1.4rem,5vw,2.4rem);
+  border-radius: 60px;
+  font-size: clamp(0.82rem,3.5vw,0.95rem); font-weight: 500;
+  text-decoration: none; transition: all 0.28s;
+  animation: btnPulse 2.4s infinite;
+  box-shadow: 0 8px 24px rgba(201,169,110,0.35);
+  position: relative; overflow: hidden;
+}
+
+.btn-dl::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to right,transparent,rgba(255,255,255,0.1),transparent);
+  transform: translateX(-100%); transition: transform 0.5s ease;
+}
+
+@media (hover: hover) {
+  .btn-dl:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(201,169,110,0.5); }
+  .btn-dl:hover::before { transform: translateX(100%); }
+}
+
+@keyframes btnPulse {
+  0% { box-shadow: 0 8px 24px rgba(201,169,110,0.35), 0 0 0 0 rgba(201,169,110,0.35); }
+  70% { box-shadow: 0 8px 24px rgba(201,169,110,0.35), 0 0 0 16px rgba(201,169,110,0); }
+  100% { box-shadow: 0 8px 24px rgba(201,169,110,0.35), 0 0 0 0 rgba(201,169,110,0); }
+}
+
+.dl-note {
+  margin-top: 0.9rem;
+  font-size: 0.64rem; color: rgba(251,244,239,0.3);
+  letter-spacing: 0.05em;
+}
+
+.install-guide {
+  display: flex; justify-content: center;
+  gap: clamp(0.8rem,3vw,1.8rem); flex-wrap: wrap; margin-top: 2.8rem;
+}
+
+.ig {
+  display: flex; gap: 0.75rem; max-width: 200px;
+  text-align: left; background: rgba(255,255,255,0.025);
+  padding: 0.7rem 1rem; border-radius: 60px;
+  border: 1px solid rgba(201,169,110,0.12);
+  align-items: center;
+}
+
+.ig-num {
+  background: var(--rose); width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.68rem; font-weight: 500; flex-shrink: 0;
+}
+
+.ig p { font-size: clamp(0.62rem,2.5vw,0.74rem); line-height: 1.4; }
+.ig strong { font-size: clamp(0.68rem,2.5vw,0.76rem); color: var(--cream); }
+
+/* ─── FOOTER ─── */
+footer {
+  padding: clamp(1.5rem,5vw,2.8rem) clamp(1rem,5vw,4rem);
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 1rem;
+  border-top: 1px solid rgba(201,169,110,0.1);
+  background: rgba(10,10,12,0.6);
+}
+
+.flogo {
+  font-family: 'Cormorant Garamond',serif;
+  font-size: clamp(1.1rem,4vw,1.35rem); font-weight: 600;
+  background: linear-gradient(135deg,#FFFFFF,var(--blush));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+footer p { font-size: clamp(0.58rem,2.5vw,0.7rem); color: rgba(251,244,239,0.3); }
+
+.flinks { display: flex; gap: clamp(1rem,4vw,1.8rem); flex-wrap: wrap; }
+
+.flinks a {
+  font-size: clamp(0.6rem,2.5vw,0.72rem); text-decoration: none;
+  color: rgba(251,244,239,0.3); transition: color 0.2s;
+}
+
+@media (hover: hover) { .flinks a:hover { color: var(--blush); } }
+
+/* ─── SCROLL REVEAL ─── */
+.sr {
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 0.75s cubic-bezier(0.2,0.9,0.3,1.05),
+              transform 0.75s cubic-bezier(0.2,0.9,0.3,1.05);
+}
+.sr.vis { opacity: 1; transform: translateY(0); }
+
+/* stagger children */
+.feat-grid .feat.sr { transition-delay: calc(var(--i,0) * 80ms); }
+.steps .step.sr { transition-delay: calc(var(--i,0) * 120ms); }
+
+/* ─── TOAST ─── */
+#toastMsg {
+  position: fixed; bottom: 1.5rem; left: 50%;
+  background: rgba(8,8,10,0.97);
+  backdrop-filter: blur(16px);
+  color: white; padding: 0.75rem 1.6rem;
+  border-radius: 60px;
+  transform: translateX(-50%) translateY(120px);
+  transition: transform 0.35s var(--ease);
+  z-index: 5000; font-size: clamp(0.7rem,3vw,0.85rem);
+  border: 1px solid rgba(201,169,110,0.4);
+  white-space: nowrap;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+
+@media (max-width: 500px) {
+  #toastMsg { white-space: normal; max-width: 85vw; text-align: center; line-height: 1.4; }
+}
+
+#toastMsg.show { transform: translateX(-50%) translateY(0); }
+
+@keyframes heartBurstAnim {
+  0% { transform: translate(-50%,-50%) scale(1) rotate(var(--rot)); opacity: 1; }
+  100% { transform: translate(-50%,-160px) scale(0.2) rotate(var(--rot)); opacity: 0; }
+}
+
+/* tablet landscape */
+@media (max-width: 768px) and (orientation: landscape) {
+  .hero { min-height: auto; padding: 6rem 0 3rem; }
+  .phone { width: 200px; height: 390px; }
+  .fpill { display: none; }
+}
+
+@media (max-width: 480px) {
+  .nav-pill { display: none; }
+  .btn-hero, .nav-cta { padding: 0.65rem 1.2rem; }
+  .install-guide { flex-direction: column; align-items: center; }
+  .ig { max-width: 280px; width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- Scroll Progress Bar -->
+<div id="scroll-progress"></div>
+
+<!-- Custom Cursor -->
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<!-- Canvas Background -->
+<canvas id="canvas-bg"></canvas>
+
+<!-- Toast Notification -->
+<div id="toastMsg">💕 JustUs APK — your private sanctuary awaits</div>
+
+<!-- ─── NAV ─── -->
+<nav id="mainNav">
+  <div class="nav-logo">JustUs</div>
+  <div class="nav-pill">✧ encrypted for two ✧</div>
+  <a href="#download" class="nav-cta" id="navCta">Get APK</a>
+</nav>
+
+<!-- ─── HERO ─── -->
+<section class="wrap">
+  <div class="hero">
+    <div class="hero-text sr">
+      <div class="eyebrow"><span class="eyebrow-dot"></span>for two souls, only</div>
+      <h1>Every heartbeat,<br><em>just the two</em><br>of you.</h1>
+      <p class="hero-sub">A private universe for your love — encrypted chat, memory vault, shared timeline. Built for intimacy, not algorithms.</p>
+      <div class="btn-row">
+        <a href="#download" class="btn-hero" id="heroDownload">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Free APK
+        </a>
+        <a href="#features" class="btn-ghost">Explore features →</a>
+      </div>
+      <div class="trust-row">
+        <span><span class="trust-dot"></span>e2e encrypted</span>
+        <span><span class="trust-dot"></span>android apk</span>
+        <span><span class="trust-dot"></span>100% ad‑free</span>
+      </div>
+    </div>
+
+    <div class="hero-vis sr">
+      <div class="phone-rig">
+        <div class="phone-glow"></div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="pstatus"><span>9:41</span><span>🔒</span></div>
+            <div class="pheader">JustUs<small>✨ Maya + Rohan · 189 days together</small></div>
+            <div class="divider-line"></div>
+            <div class="chat-area">
+              <div class="cb">I can't wait to see you tonight 🌹</div>
+              <div class="cb me">Same, love — counting minutes 💘</div>
+              <div class="cb">our song just played, thinking of you</div>
+              <div class="cb me">🎶 always. you're my home.</div>
+            </div>
+            <div class="memory-row">
+              <div class="mthumb" data-label="first meet"></div>
+              <div class="mthumb" data-label="nyc trip"></div>
+              <div class="mthumb" data-label="promise"></div>
+            </div>
+          </div>
+        </div>
+        <div class="fpill fpill-1">💌 private notes</div>
+        <div class="fpill fpill-2">📖 love timeline</div>
+        <div class="fpill fpill-3">🎀 milestones</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── STATS BAR ─── -->
+<div class="stats-bar sr">
+  <div class="stat">
+    <div class="sval" data-target="12000" data-suffix="K+">12K+</div>
+    <div class="slabel">couples</div>
+  </div>
+  <div class="sdiv"></div>
+  <div class="stat">
+    <div class="sval">4.95★</div>
+    <div class="slabel">loved by users</div>
+  </div>
+  <div class="sdiv"></div>
+  <div class="stat">
+    <div class="sval">100%</div>
+    <div class="slabel">private</div>
+  </div>
+  <div class="sdiv"></div>
+  <div class="stat">
+    <div class="sval">forever</div>
+    <div class="slabel">free</div>
+  </div>
+</div>
+
+<!-- ─── FEATURES ─── -->
+<section class="features-section wrap" id="features">
+  <div class="section-header">
+    <div class="sec-eyebrow sr">only for two</div>
+    <h2 class="sec-title sr">Designed for <em>intimacy.</em><br>Crafted for connection.</h2>
+    <p class="sec-sub sr">No more scattered memories. JustUs brings your entire relationship into one encrypted sanctuary.</p>
+  </div>
+  <div class="feat-grid">
+    <div class="feat sr" style="--i:0">
+      <span class="feat-icon">💬</span>
+      <h3>Secure Chat</h3>
+      <p>End-to-end encrypted messages, voice notes and custom couple stickers that only you two can see.</p>
+      <div class="feat-accent"></div>
+    </div>
+    <div class="feat sr" style="--i:1">
+      <span class="feat-icon">📸</span>
+      <h3>Shared Vault</h3>
+      <p>Private gallery only the two of you can access. Every photo, every moment, forever safe.</p>
+      <div class="feat-accent"></div>
+    </div>
+    <div class="feat sr" style="--i:2">
+      <span class="feat-icon">🕰️</span>
+      <h3>Love Timeline</h3>
+      <p>From first date to forever, build a living story of your journey together — beautifully displayed.</p>
+      <div class="feat-accent"></div>
+    </div>
+    <div class="feat sr" style="--i:3">
+      <span class="feat-icon">🎉</span>
+      <h3>Milestones</h3>
+      <p>Anniversaries, proposals, first home — celebrate every chapter of your relationship.</p>
+      <div class="feat-accent"></div>
+    </div>
+    <div class="feat sr" style="--i:4">
+      <span class="feat-icon">🔔</span>
+      <h3>Smart Reminders</h3>
+      <p>Thoughtful date prompts and anniversary countdowns so you never miss a special moment.</p>
+      <div class="feat-accent"></div>
+    </div>
+    <div class="feat sr" style="--i:5">
+      <span class="feat-icon">🔒</span>
+      <h3>Zero Data Mining</h3>
+      <p>Your relationship belongs to you — no ads, no tracking, no third parties. Ever.</p>
+      <div class="feat-accent"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW IT WORKS ─── -->
+<section class="how-section" id="how">
+  <div class="wrap">
+    <div class="section-header">
+      <div class="sec-eyebrow sr">get started</div>
+      <h2 class="sec-title sr">Three steps to <em>your world.</em></h2>
+      <p class="sec-sub sr">Direct APK install. No Play Store required — just love.</p>
+    </div>
+    <div class="steps">
+      <div class="step sr" style="--i:0">
+        <div class="step-n">01</div>
+        <h4>Download APK</h4>
+        <p>Tap the button below and save the file directly to your Android device.</p>
+      </div>
+      <div class="step sr" style="--i:1">
+        <div class="step-n">02</div>
+        <h4>Install &amp; Create</h4>
+        <p>Enable "unknown sources" if needed — takes about 10 seconds to install.</p>
+      </div>
+      <div class="step sr" style="--i:2">
+        <div class="step-n">03</div>
+        <h4>Invite Your Partner</h4>
+        <p>Share your unique invite code — your private space comes alive instantly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── TESTIMONIALS ─── -->
+<section class="testimonials-section" id="testimonials">
+  <div class="wrap">
+    <div class="section-header">
+      <div class="sec-eyebrow sr">from real couples</div>
+      <h2 class="sec-title sr">Love stories, <em>shared.</em></h2>
+    </div>
+  </div>
+  <div class="testi-track-wrap sr">
+    <div class="testi-track" id="testiTrack">
+      <!-- Cards duplicated for infinite loop effect via JS -->
+    </div>
+  </div>
+</section>
+
+<!-- ─── DOWNLOAD ─── -->
+<section class="dl-section" id="download">
+  <div class="dl-glow"></div>
+  <div class="wrap">
+    <div class="sec-eyebrow sr" style="justify-content:center">the app</div>
+    <h2 class="sec-title sr" style="text-align:center">Ready for <em>just the two of you?</em></h2>
+    <p class="sec-sub sr" style="text-align:center">Free, encrypted, yours. Download JustUs APK directly — no middlemen, no subscriptions.</p>
+    <div class="dl-card sr">
+      <span class="dl-card-top">📱💞</span>
+      <h3>JustUs for Android</h3>
+      <p class="dl-meta">APK · Android 7+ · ~19 MB · always free</p>
+      <a href="justus.apk" class="btn-dl" id="dlButton" download>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download JustUs APK
+      </a>
+      <p class="dl-note">🔐 signed &amp; safe — from us, with love</p>
+    </div>
+
+    <div class="install-guide sr">
+      <div class="ig">
+        <div class="ig-num">1</div>
+        <p><strong>Save file</strong><br>tap download → APK saved</p>
+      </div>
+      <div class="ig">
+        <div class="ig-num">2</div>
+        <p><strong>Allow install</strong><br>settings → security → unknown sources</p>
+      </div>
+      <div class="ig">
+        <div class="ig-num">3</div>
+        <p><strong>Open APK</strong><br>tap from notification or files</p>
+      </div>
+      <div class="ig">
+        <div class="ig-num">4</div>
+        <p><strong>Invite partner</strong><br>share code &amp; begin</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="flogo">Just<em>Us</em></div>
+  <p>© 2025 JustUs · crafted with devotion for couples worldwide.</p>
+  <div class="flinks">
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Support</a>
+  </div>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  // ── Scroll progress bar ──
+  const progressBar = document.getElementById('scroll-progress');
+  window.addEventListener('scroll', () => {
+    const scrolled = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+    progressBar.style.width = scrolled + '%';
+  }, { passive: true });
+
+  // ── Nav shrink on scroll ──
+  const nav = document.getElementById('mainNav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 60);
+  }, { passive: true });
+
+  // ── Custom cursor ──
+  const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const dot  = document.getElementById('cursor-dot');
+  const ring = document.getElementById('cursor-ring');
+
+  if (isTouch) {
+    if (dot)  dot.style.display  = 'none';
+    if (ring) ring.style.display = 'none';
+  } else {
+    let mx = 0, my = 0, rx = 0, ry = 0;
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      if (dot)  { dot.style.left  = mx + 'px'; dot.style.top  = my + 'px'; }
+    });
+    (function animateCursor() {
+      rx += (mx - rx) * 0.12;
+      ry += (my - ry) * 0.12;
+      if (ring) { ring.style.left = rx + 'px'; ring.style.top = ry + 'px'; }
+      requestAnimationFrame(animateCursor);
+    })();
+
+    // Cursor expand on interactable
+    document.querySelectorAll('a, button, .feat, .tcard').forEach(el => {
+      el.addEventListener('mouseenter', () => ring && ring.classList.add('expand'));
+      el.addEventListener('mouseleave', () => ring && ring.classList.remove('expand'));
+    });
+  }
+
+  // ── Canvas animated background ──
+  const canvas = document.getElementById('canvas-bg');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    let w, h, particles = [], orbs = [], frame = 0;
+
+    function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+    window.addEventListener('resize', () => { resize(); init(); }, { passive: true });
+    resize();
+
+    class Pt {
+      constructor() { this.reset(); }
+      reset() {
+        this.x = Math.random() * w; this.y = Math.random() * h;
+        this.vx = (Math.random() - 0.5) * 0.28; this.vy = (Math.random() - 0.5) * 0.28;
+        this.r  = Math.random() * 1.5 + 0.8; this.a = Math.random() * 0.4 + 0.12;
+      }
+      update() {
+        this.x += this.vx; this.y += this.vy;
+        if (this.x < 0 || this.x > w) this.vx *= -1;
+        if (this.y < 0 || this.y > h) this.vy *= -1;
+      }
+      draw() {
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(201,169,110,${this.a})`; ctx.fill();
+      }
+    }
+
+    class Orb {
+      constructor() {
+        this.x = Math.random() * w; this.y = Math.random() * h;
+        this.r = Math.random() * 200 + 100;
+        this.vx = (Math.random() - 0.5) * 0.06; this.vy = (Math.random() - 0.5) * 0.06;
+        this.alpha = Math.random() * 0.05 + 0.015; this.phase = Math.random() * Math.PI * 2;
+        this.hue = Math.random() > 0.5 ? '201,169,110' : '224,192,128';
+      }
+      update(t) {
+        this.x += this.vx + Math.sin(t * 0.0004 + this.phase) * 0.18;
+        this.y += this.vy + Math.cos(t * 0.0003 + this.phase) * 0.14;
+        if (this.x < -this.r) this.x = w + this.r;
+        if (this.x > w + this.r) this.x = -this.r;
+        if (this.y < -this.r) this.y = h + this.r;
+        if (this.y > h + this.r) this.y = -this.r;
+      }
+      draw() {
+        const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
+        g.addColorStop(0, `rgba(${this.hue},${this.alpha * 1.4})`);
+        g.addColorStop(1, `rgba(${this.hue},0)`);
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fillStyle = g; ctx.fill();
+      }
+    }
+
+    function init() {
+      const count = Math.min(55, Math.floor(w * h / 16000));
+      particles = Array.from({ length: count }, () => new Pt());
+      orbs = Array.from({ length: Math.min(5, Math.floor(w / 280)) }, () => new Orb());
+    }
+    init();
+
+    function animate() {
+      ctx.clearRect(0, 0, w, h);
+      frame++;
+      orbs.forEach(o => { o.update(frame); o.draw(); });
+      particles.forEach((p, i) => {
+        p.update(); p.draw();
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = p.x - particles[j].x, dy = p.y - particles[j].y;
+          const d = Math.hypot(dx, dy);
+          if (d < 120) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y); ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(201,169,110,${0.07 * (1 - d / 120)})`;
+            ctx.lineWidth = 0.7; ctx.stroke();
+          }
+        }
+      });
+      requestAnimationFrame(animate);
+    }
+    animate();
+  }
+
+  // ── Scroll reveal with stagger ──
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('vis'); });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.sr').forEach(el => obs.observe(el));
+
+  setTimeout(() => {
+    document.querySelectorAll('.sr').forEach(el => {
+      if (el.getBoundingClientRect().top < window.innerHeight - 60) el.classList.add('vis');
+    });
+  }, 100);
+
+  // ── Toast & heart burst ──
+  const toast = document.getElementById('toastMsg');
+  function showToast(m) {
+    toast.textContent = m; toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3200);
+  }
+
+  function heartBurst(x, y) {
+    const emojis = ['❤️','💕','💖','💗','💓','🌹','✨'];
+    for (let i = 0; i < 18; i++) {
+      const h = document.createElement('span');
+      h.innerHTML = emojis[Math.floor(Math.random() * emojis.length)];
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 70 + 30;
+      h.style.cssText = `position:fixed;left:${x+Math.cos(a)*r}px;top:${y+Math.sin(a)*r}px;font-size:${Math.random()*12+10}px;pointer-events:none;z-index:10000;--rot:${(Math.random()-0.5)*60}deg;animation:heartBurstAnim 0.9s ease-out forwards;`;
+      document.body.appendChild(h);
+      setTimeout(() => h.remove(), 900);
+    }
+  }
+
+  // Download button
+  const dlBtn = document.getElementById('dlButton');
+  if (dlBtn) {
+    dlBtn.addEventListener('click', function(e) {
+      const rect = this.getBoundingClientRect();
+      heartBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      showToast('💖 Download started — welcome to JustUs!');
+      const orig = this.innerHTML;
+      this.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg> starting…';
+      setTimeout(() => this.innerHTML = orig, 2200);
+    });
+  }
+
+  // Smooth scroll anchors
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const t = document.querySelector(a.getAttribute('href'));
+      if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+  });
+
+  // ── Build Testimonials ──
+  const testimonials = [
+    { stars: 5, quote: "JustUs is the only app where I feel truly private. No ads. No algorithms reading our messages. Just us.", name: "Priya & Arjun", sub: "Together 3 years", emoji: "🌸" },
+    { stars: 5, quote: "The love timeline feature made me cry happy tears. Seeing our whole journey in one place is magical.", name: "Sofia & Marco", sub: "Together 5 years", emoji: "🌹" },
+    { stars: 5, quote: "We use the memory vault every single day. It's become our most cherished digital space.", name: "Layla & Hassan", sub: "Together 2 years", emoji: "💫" },
+    { stars: 5, quote: "Finally! An app that respects our privacy. E2E encryption that actually means something.", name: "Emma & Liam", sub: "Engaged 🤍", emoji: "💍" },
+    { stars: 5, quote: "The milestones feature is perfect for anniversary planning. We've logged 47 special moments.", name: "Yuki & Kenji", sub: "Together 4 years", emoji: "🌷" },
+    { stars: 5, quote: "It replaced like 5 other apps we were using. Everything in one beautiful, private place.", name: "Amara & David", sub: "Together 1.5 years", emoji: "✨" },
+    { stars: 5, quote: "The floating love timeline view is just gorgeous. This app was made with real love.", name: "Camille & Antoine", sub: "Together 6 years", emoji: "🎀" },
+  ];
+
+  function buildCard(t) {
+    return `<div class="tcard">
+      <div class="tcard-stars">${'★'.repeat(t.stars)}</div>
+      <p class="tcard-quote">"${t.quote}"</p>
+      <div class="tcard-author">
+        <div class="tcard-avatar">${t.emoji}</div>
+        <div>
+          <div class="tcard-name">${t.name}</div>
+          <div class="tcard-sub">${t.sub}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const track = document.getElementById('testiTrack');
+  if (track) {
+    // Duplicate for seamless loop
+    const html = [...testimonials, ...testimonials].map(buildCard).join('');
+    track.innerHTML = html;
+  }
+
+  // ── Animated stat counter ──
+  let counted = false;
+  const statsBar = document.querySelector('.stats-bar');
+  if (statsBar) {
+    const countObs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !counted) {
+        counted = true;
+        animateCount(document.querySelector('.sval'), 0, 12, 1200, 'K+');
+        countObs.disconnect();
+      }
+    }, { threshold: 0.5 });
+    countObs.observe(statsBar);
+  }
+
+  function animateCount(el, from, to, dur, suffix) {
+    if (!el) return;
+    const start = performance.now();
+    function step(now) {
+      const progress = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.floor(from + (to - from) * ease) + suffix;
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+})();
+</script>
+</body>
+</html>

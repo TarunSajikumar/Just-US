@@ -42,6 +42,19 @@ export const sendOtp = async (req: Request, res: Response) => {
     console.log("🔐 Generated OTP:", otp);
     console.log("📧 Normalized Contact:", contact);
 
+    // Check if user already exists
+    const userExists = await User.findOne({
+      $or: [{ email: contact }, { phone: contact }]
+    });
+
+    if (userExists) {
+      return res.status(200).json({
+        message: "User exists, redirecting to login",
+        userExists: true,
+        contact: contact
+      });
+    }
+
     const otpRecord = await Otp.findOneAndUpdate(
       { contact },
       {
@@ -187,15 +200,64 @@ export const signup = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const data = await loginUser(req.body);
+    const { email, phone } = req.body;
+    let contact = (email || phone || "").trim();
+
+    if (contact.includes("@")) {
+      contact = contact.toLowerCase();
+    }
+
+    const user = await User.findOne({
+      $or: [
+        { email: contact },
+        { phone: contact },
+        { email: { $regex: new RegExp(`^${contact}$`, 'i') } }
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "30d" }
+    );
+
+    // Resolve additional data for syncing
+    let partner = null;
+    let relationshipStartDate = null;
+    let anniversaryDate = null;
+    let nextMeetDate = null;
+
+    if (user.partner_id) {
+      partner = await User.findById(user.partner_id);
+    }
+
+    if (user.couple_id) {
+      const couple = await Couple.findById(user.couple_id);
+      relationshipStartDate = couple?.relationshipStartDate || couple?.createdAt;
+      anniversaryDate = couple?.anniversaryDate;
+      nextMeetDate = couple?.nextMeetDate;
+    }
 
     res.status(200).json({
       message: "Login success",
-      ...data,
+      token,
+      user: {
+        ...user.toObject(),
+        partner,
+        relationshipStartDate,
+        anniversaryDate,
+        nextMeetDate
+      }
     });
   } catch (error: any) {
-    res.status(400).json({
-      message: error.message,
+    console.error("Login Error:", error);
+    res.status(500).json({
+      message: "Login failed",
+      error: error.message
     });
   }
 };
