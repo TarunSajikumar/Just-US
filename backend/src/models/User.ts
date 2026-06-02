@@ -2,9 +2,22 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    email: String,
+    email: {
+      type: String,
+      sparse: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
 
-    phone: String,
+    phone: {
+      type: String,
+      sparse: true,
+      unique: true,
+      trim: true,
+      index: true,
+    },
 
     name: String,
 
@@ -57,6 +70,11 @@ const userSchema = new mongoose.Schema(
     lastSeen: {
       type: Date,
       default: null,
+    },
+
+    notificationsEnabled: {
+      type: Boolean,
+      default: false,
     },
   },
   {

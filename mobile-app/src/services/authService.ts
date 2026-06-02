@@ -47,6 +47,7 @@ export const authService = {
       setNextMeetDate,
       setPartnerNickname,
       setPartnerPingMessage,
+      setNotificationsEnabled,
     } = useAuthStore.getState();
     setUser(profile);
     setPartner(profile.partner ?? null);
@@ -55,6 +56,7 @@ export const authService = {
     setNextMeetDate(profile.nextMeetDate ?? null);
     setPartnerNickname(profile.partnerNickname ?? '');
     setPartnerPingMessage(profile.partnerPingMessage ?? 'I miss you, where are you? ❤️');
+    setNotificationsEnabled(profile.notificationsEnabled ?? false);
     // Persist updated user to local storage
     const token = useAuthStore.getState().token;
     if (token) {

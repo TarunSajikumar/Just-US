@@ -99,21 +99,23 @@ export default function OtpVerificationScreen({ navigation, route }: any) {
 
       setIsVerifying(false);
 
-      if (verified && token && user) {
-        await saveAuthData(token, user);
-        setToken(token);
-        setUser(user);
-        return;
-      }
-
       if (!verified) {
         shake();
         Alert.alert('Error', response.data?.message || 'Invalid or expired OTP');
         return;
       }
 
-      if (isNewUser) {
-        navigation.replace('SignupDetails', { contact });
+      if (verified && token && user) {
+        await saveAuthData(token, user);
+        setToken(token);
+        setUser(user);
+
+        // If new user, show signup details form
+        // If existing user, they will be auto-logged in to home screen
+        if (isNewUser) {
+          navigation.replace('SignupDetails', { contact });
+        }
+        return;
       }
     } catch (err: any) {
       console.error('OTP verify error', err);

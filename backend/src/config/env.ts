@@ -5,7 +5,8 @@ dotenv.config();
 const requiredEnv = [
   "MONGODB_URI",
   "JWT_SECRET",
-  "SENDGRID_API_KEY",
+  "EMAIL_USER",
+  "EMAIL_PASS",
 ];
 
 requiredEnv.forEach((key) => {
@@ -17,6 +18,7 @@ requiredEnv.forEach((key) => {
 export default {
   mongodbUri: process.env.MONGODB_URI!,
   jwtSecret: process.env.JWT_SECRET!,
-  sendgridApiKey: process.env.SENDGRID_API_KEY!,
+  emailUser: process.env.EMAIL_USER!,
+  emailPass: process.env.EMAIL_PASS!,
   port: process.env.PORT || 5000,
 };

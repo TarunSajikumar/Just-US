@@ -18,6 +18,10 @@ export const sendMissYouPing = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Partner is offline or hasn't enabled notifications" });
     }
 
+    if (!partner.notificationsEnabled) {
+      return res.status(403).json({ message: "Partner has disabled notifications" });
+    }
+
     const title = `❤️ ${user.name} misses you`;
     const body = customMessage || user.partnerPingMessage || "I miss you, where are you? ❤️";
 

@@ -1,17 +1,23 @@
-import sgMail from "@sendgrid/mail";
+import nodemailer from "nodemailer";
 import env from "../../config/env";
 
-// Initialize SendGrid
-sgMail.setApiKey(env.sendgridApiKey);
+// Create transporter with Gmail
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: env.emailUser,
+    pass: env.emailPass,
+  },
+});
 
-// Verify SendGrid configuration at startup
+// Verify Gmail configuration at startup
 (async () => {
   try {
-    // Test API key by making a dummy verification
-    console.log("✅ SendGrid email service configured successfully");
+    await transporter.verify();
+    console.log("✅ Email service (Gmail) configured successfully");
   } catch (error) {
     console.error(
-      "⚠️  EMAIL SERVICE ERROR - Check your SENDGRID_API_KEY in .env:",
+      "⚠️  EMAIL SERVICE ERROR - Check your EMAIL_USER and EMAIL_PASS in .env:",
       error
     );
   }
@@ -19,9 +25,9 @@ sgMail.setApiKey(env.sendgridApiKey);
 
 export async function sendOtpEmail(email: string, otp: string | number): Promise<void> {
   try {
-    const msg = {
+    const mailOptions = {
+      from: env.emailUser,
       to: email,
-      from: "codebyt4@gmail.com", // Use SendGrid verified sender
       subject: "JusT us Verification Code 💌",
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 20px;">
@@ -38,12 +44,12 @@ export async function sendOtpEmail(email: string, otp: string | number): Promise
       `,
     };
 
-    await sgMail.send(msg);
-    console.log(`✅ Email sent to ${email} via SendGrid`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Email sent to ${email}`, info.response);
   } catch (error: any) {
     console.error(`❌ Failed to send email to ${email}:`, error.message);
     throw new Error(
-      `Email service failed: ${error.message}. Ensure SENDGRID_API_KEY is correct in .env`
+      `Email service failed: ${error.message}. Ensure EMAIL_USER (Gmail) and EMAIL_PASS (Gmail App Password) are correct in .env`
     );
   }
 }

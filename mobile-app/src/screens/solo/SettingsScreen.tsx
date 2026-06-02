@@ -6,13 +6,17 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../theme/colors';
 import { clearAuthData } from '../../store/authStore';
 import { useAuthStore } from '../../store/authStore';
 
 export default function SettingsScreen() {
   const logout = useAuthStore((state) => state.logout);
+  const setToken = useAuthStore((state) => state.setToken);
+  const setUser = useAuthStore((state) => state.setUser);
   const user = useAuthStore((state) => state.user);
+  const navigation = useNavigation<any>();
 
   const handleLogout = () => {
     Alert.alert(
@@ -24,9 +28,21 @@ export default function SettingsScreen() {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            await clearAuthData();
-            logout();
-            // RootNavigator automatically returns to LoginSignup screen
+            try {
+              console.log('Starting logout...');
+              // Clear auth data from storage
+              await clearAuthData();
+              console.log('Auth data cleared');
+              
+              // Clear store state
+              setToken(null);
+              setUser(null);
+              logout();
+              console.log('Logout completed, token cleared');
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
           },
         },
       ]

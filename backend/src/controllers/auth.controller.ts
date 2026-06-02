@@ -9,14 +9,20 @@ import User from "../models/User";
 import Couple from "../models/Couple";
 
 export const sendOtp = async (req: Request, res: Response) => {
-  const email = req.body.email || req.body.phone;
-  if (!email) {
+  let contact = (req.body.email || req.body.phone || "").trim();
+  
+  if (!contact) {
     return res.status(400).json({ message: "Email or Phone is required" });
+  }
+
+  // Normalize email to lowercase
+  if (contact.includes("@")) {
+    contact = contact.toLowerCase();
   }
 
   try {
     // Rate limiting: Check if an OTP was sent recently (e.g., in the last 30 seconds)
-    const existingOtp = await Otp.findOne({ contact: email });
+    const existingOtp = await Otp.findOne({ contact });
 
     if (existingOtp) {
       const lastSent = new Date(existingOtp.updatedAt as Date).getTime();
@@ -34,10 +40,10 @@ export const sendOtp = async (req: Request, res: Response) => {
     const otp = generateOtp();
 
     console.log("🔐 Generated OTP:", otp);
-    console.log("📧 Contact:", email);
+    console.log("📧 Normalized Contact:", contact);
 
     const otpRecord = await Otp.findOneAndUpdate(
-      { contact: email },
+      { contact },
       {
         code: otp,
         expiresAt: new Date(Date.now() + 5 * 60 * 1000),
@@ -46,10 +52,10 @@ export const sendOtp = async (req: Request, res: Response) => {
     );
 
     // Send Email 
-    if (email.includes('@')) {
+    if (contact.includes('@')) {
       try {
-        await sendOtpEmail(email, otp);
-        console.log("✅ OTP email sent successfully to:", email);
+        await sendOtpEmail(contact, otp);
+        console.log("✅ OTP email sent successfully to:", contact);
       } catch (emailError: any) {
         console.error("❌ Email sending failed:", emailError.message);
         
@@ -63,7 +69,7 @@ export const sendOtp = async (req: Request, res: Response) => {
 
     res.status(200).json({ 
       message: "OTP sent successfully",
-      contact: email,
+      contact: contact,
       expiresIn: 300 // 5 minutes in seconds
     });
   } catch (error: any) {
@@ -77,7 +83,12 @@ export const sendOtp = async (req: Request, res: Response) => {
 
 export const verifyOtp = async (req: Request, res: Response) => {
   const { email, otp } = req.body;
-  const contact = email || req.body.phone;
+  let contact = (email || req.body.phone || "").trim();
+
+  // Normalize email to lowercase
+  if (contact.includes("@")) {
+    contact = contact.toLowerCase();
+  }
 
   if (!contact || !otp) {
     return res.status(400).json({ message: "Contact and OTP are required" });
@@ -85,9 +96,9 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
   try {
     // 1. Verify OTP
-    const existingOtp = await Otp.findOne({ contact });
+    const existingOtp = await Otp.findOne({ contact: contact.trim() });
 
-    console.log("Contact:", contact);
+    console.log("Normalized Contact:", contact);
     console.log("Received OTP:", otp);
     console.log("Stored OTP:", existingOtp?.code);
 
@@ -104,18 +115,39 @@ export const verifyOtp = async (req: Request, res: Response) => {
     }
 
     // 2. Find or Create User
+    // Use case-insensitive regex for email to be safe with any legacy mixed-case data
     let user = await User.findOne({
-      $or: [{ email: contact }, { phone: contact }],
+      $or: [
+        { email: contact },
+        { phone: contact },
+        { email: { $regex: new RegExp(`^${contact}$`, 'i') } }
+      ],
     });
+
+    console.log("🔍 User Lookup Result:", user ? `Found User ID: ${user._id}` : "No user found, creating new account");
 
     let isNewUser = false;
     if (!user) {
       isNewUser = true;
-      user = await User.create({
-        email: contact.includes("@") ? contact : null,
-        phone: !contact.includes("@") ? contact : null,
-        relationship_status: "none",
-      });
+      try {
+        user = await User.create({
+          email: contact.includes("@") ? contact : null,
+          phone: !contact.includes("@") ? contact : null,
+          relationship_status: "none",
+        });
+        console.log("✨ Created New User:", user._id);
+      } catch (createError: any) {
+        // If creation fails due to unique constraint, try finding one more time
+        if (createError.code === 11000) {
+          console.log("⚠️ Concurrent signup or hidden duplicate detected, retrying lookup...");
+          user = await User.findOne({
+            $or: [{ email: contact }, { phone: contact }],
+          });
+          isNewUser = false;
+        } else {
+          throw createError;
+        }
+      }
     }
 
     // 3. Cleanup OTP

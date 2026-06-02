@@ -1,5 +1,5 @@
 import axios from "axios";
-import * as SecureStore from 'expo-secure-store';
+import { storageService } from './storageService';
 import { useAuthStore } from '../store/authStore';
 
 export const BASE_URL =
@@ -16,7 +16,7 @@ export const api = axios.create({
 // Interceptor for adding token to requests
 api.interceptors.request.use(
   async (config) => {
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await storageService.getItem('userToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -36,7 +36,7 @@ api.interceptors.response.use(
 
     if (status === 401 || (status === 404 && url?.includes('/auth/me'))) {
       // Token expired, invalid, or user record deleted from database
-      await SecureStore.deleteItemAsync('userToken');
+      await storageService.deleteItem('userToken');
       useAuthStore.getState().logout();
     }
     return Promise.reject(error);

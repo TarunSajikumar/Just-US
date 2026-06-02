@@ -65,6 +65,25 @@ export const updateFcmToken = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const updateNotificationSettings = async (req: AuthRequest, res: Response) => {
+  const { enabled } = req.body;
+  const userId = req.userId;
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { notificationsEnabled: enabled },
+      { new: true }
+    );
+    return res.json({
+      success: true,
+      notificationsEnabled: user?.notificationsEnabled,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update notification settings" });
+  }
+};
+
 export const getPartnerStatus = async (req: AuthRequest, res: Response) => {
   try {
     const user = await User.findById(req.userId);

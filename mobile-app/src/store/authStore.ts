@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { storageService } from '../services/storageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
@@ -6,7 +6,7 @@ import { create } from 'zustand';
 
 export const saveAuthData = async (token: string, user: any) => {
   try {
-    await SecureStore.setItemAsync('userToken', token);
+    await storageService.setItem('userToken', token);
     await AsyncStorage.setItem('userData', JSON.stringify(user));
   } catch (e) {
     console.error('Error saving auth data', e);
@@ -15,7 +15,7 @@ export const saveAuthData = async (token: string, user: any) => {
 
 export const getAuthData = async () => {
   try {
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await storageService.getItem('userToken');
     const userStr = await AsyncStorage.getItem('userData');
     return {
       token,
@@ -29,7 +29,7 @@ export const getAuthData = async () => {
 
 export const clearAuthData = async () => {
   try {
-    await SecureStore.deleteItemAsync('userToken');
+    await storageService.deleteItem('userToken');
     await AsyncStorage.removeItem('userData');
   } catch (e) {
     console.error('Error clearing auth data', e);
@@ -47,6 +47,7 @@ interface AuthState {
   nextMeetDate: string | null;
   partnerNickname: string;
   partnerPingMessage: string;
+  notificationsEnabled: boolean;
   setToken: (token: string | null) => void;
   setUser: (user: any | null) => void;
   setPartner: (partner: any | null) => void;
@@ -55,6 +56,7 @@ interface AuthState {
   setNextMeetDate: (date: string | null) => void;
   setPartnerNickname: (nickname: string) => void;
   setPartnerPingMessage: (message: string) => void;
+  setNotificationsEnabled: (enabled: boolean) => void;
   logout: () => void;
 }
 
@@ -67,6 +69,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   nextMeetDate: null,
   partnerNickname: '',
   partnerPingMessage: 'I miss you, where are you? ❤️',
+  notificationsEnabled: false,
   setToken: (token) => set({ token }),
   setUser: (user) => set({ user }),
   setPartner: (partner) => set({ partner }),
@@ -75,6 +78,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   setNextMeetDate: (nextMeetDate) => set({ nextMeetDate }),
   setPartnerNickname: (partnerNickname) => set({ partnerNickname }),
   setPartnerPingMessage: (partnerPingMessage) => set({ partnerPingMessage }),
+  setNotificationsEnabled: (notificationsEnabled) => set({ notificationsEnabled }),
   logout: () => {
     set({
       token: null,
@@ -84,7 +88,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       anniversaryDate: null,
       nextMeetDate: null,
       partnerNickname: '',
-      partnerPingMessage: 'I miss you, where are you? ❤️'
+      partnerPingMessage: 'I miss you, where are you? ❤️',
+      notificationsEnabled: false,
     });
   },
 }));

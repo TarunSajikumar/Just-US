@@ -19,8 +19,19 @@ import { userService } from '../../services/userService';
 
 export default function SettingsScreen({ navigation }: any) {
   const logout = useAuthStore((state) => state.logout);
-  const { user, partner, relationshipStartDate, partnerNickname, setPartnerNickname, partnerPingMessage, setPartnerPingMessage } = useAuthStore();
-  const [notifications, setNotifications] = useState(true);
+  const setToken = useAuthStore((state) => state.setToken);
+  const setUser = useAuthStore((state) => state.setUser);
+  const {
+    user,
+    partner,
+    relationshipStartDate,
+    partnerNickname,
+    setPartnerNickname,
+    partnerPingMessage,
+    setPartnerPingMessage,
+    notificationsEnabled,
+    setNotificationsEnabled,
+  } = useAuthStore();
   const [darkMode, setDarkMode] = useState(true);
   const [isNicknameModalVisible, setNicknameModalVisible] = useState(false);
   const [isPingModalVisible, setPingModalVisible] = useState(false);
@@ -73,6 +84,15 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
+  const handleToggleNotifications = async (value: boolean) => {
+    try {
+      await userService.updateNotificationSettings(value);
+      setNotificationsEnabled(value);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update notification settings');
+    }
+  };
+
   const handleLogout = () => {
     Alert.alert(
       "Logout",
@@ -83,8 +103,21 @@ export default function SettingsScreen({ navigation }: any) {
           text: "Logout",
           style: "destructive",
           onPress: async () => {
-            await clearAuthData();
-            logout();
+            try {
+              console.log('Starting logout...');
+              // Clear auth data from storage
+              await clearAuthData();
+              console.log('Auth data cleared');
+              
+              // Clear store state
+              setToken(null);
+              setUser(null);
+              logout();
+              console.log('Logout completed, token cleared');
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
           }
         }
       ]
@@ -245,8 +278,8 @@ export default function SettingsScreen({ navigation }: any) {
           <SettingItem
             icon="bell-o"
             label="Push Notifications"
-            value={notifications}
-            onToggle={setNotifications}
+            value={notificationsEnabled}
+            onToggle={handleToggleNotifications}
             isLast
           />
         </View>

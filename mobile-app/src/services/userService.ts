@@ -24,4 +24,12 @@ export const userService = {
     });
     return response.data;
   },
+
+  /** PUT /api/users/notifications */
+  updateNotificationSettings: async (enabled: boolean) => {
+    const response = await api.put('/users/notifications', {
+      enabled,
+    });
+    return response.data;
+  },
 };

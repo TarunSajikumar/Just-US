@@ -40,6 +40,7 @@ function AuthNavigator() {
 export default function RootNavigator() {
   const { token, user, setToken, setUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
+  const navigationRef = React.useRef<any>(null);
 
   useEffect(() => {
     const setupNotifications = async () => {
@@ -56,6 +57,21 @@ export default function RootNavigator() {
     };
 
     setupNotifications();
+  }, [token]);
+
+  // Reset navigation when user logs out
+  useEffect(() => {
+    if (!token) {
+      console.log('Token cleared, resetting navigation to LoginSignup');
+      if (navigationRef.current) {
+        setTimeout(() => {
+          navigationRef.current?.reset({
+            index: 0,
+            routes: [{ name: 'LoginSignup' }],
+          });
+        }, 100);
+      }
+    }
   }, [token]);
 
   useEffect(() => {
@@ -101,7 +117,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {!token ? (
         <AuthNavigator />
       ) : !user?.name ? (

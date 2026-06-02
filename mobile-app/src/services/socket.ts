@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import * as SecureStore from 'expo-secure-store';
+import { storageService } from './storageService';
 import { BASE_URL } from './api';
 
 // Derive socket URL from the API base (strip /api suffix)
@@ -9,7 +9,7 @@ class SocketService {
   private socket: Socket | null = null;
 
   async connect() {
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await storageService.getItem('userToken');
 
     this.socket = io(SOCKET_URL, {
       auth: { token },         // JWT — backend verifies this on connect
