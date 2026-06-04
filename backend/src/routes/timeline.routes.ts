@@ -1,17 +1,17 @@
-import { Router } from 'express';
+import express from "express";
 import {
   getTimelineEvents,
   createTimelineEvent,
-  updateTimelineEvent,
-  deleteTimelineEvent,
-} from '../controllers/timeline.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
+  deleteTimelineEvent
+} from "../controllers/timeline.controller";
+import { authMiddleware } from "../middleware/auth.middleware";
 
-const router = Router();
+const router = express.Router();
 
-router.get('/', authMiddleware, getTimelineEvents);
-router.post('/', authMiddleware, createTimelineEvent);
-router.put('/:id', authMiddleware, updateTimelineEvent);
-router.delete('/:id', authMiddleware, deleteTimelineEvent);
+router.use(authMiddleware);
+
+router.get("/:coupleId", getTimelineEvents);
+router.post("/", createTimelineEvent);
+router.delete("/:eventId", deleteTimelineEvent);
 
 export default router;

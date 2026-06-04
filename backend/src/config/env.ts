@@ -21,4 +21,14 @@ export default {
   emailUser: process.env.EMAIL_USER!,
   emailPass: process.env.EMAIL_PASS!,
   port: process.env.PORT || 5000,
+
+  // Optional Twilio Config
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID,
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN,
+  twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER,
+
+  // Optional Cloudinary Config
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
 };

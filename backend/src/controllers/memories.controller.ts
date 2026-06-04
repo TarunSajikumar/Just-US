@@ -2,6 +2,7 @@ import { Response } from "express";
 import User from "../models/User";
 import Memory from "../models/Memory";
 import { unlockAchievement } from "../services/achievement.service";
+import { cloudinary } from "../middleware/uploadMiddleware";
 
 /**
  * GET /api/memories/:coupleId
@@ -35,7 +36,7 @@ export const getMemories = async (req: any, res: Response) => {
 /**
  * POST /api/memories
  * Body: { coupleId, imageBase64, mimeType, caption }
- * Uploads image and inserts a DB row.
+ * Uploads image to Cloudinary and inserts a DB row.
  */
 export const createMemory = async (req: any, res: Response) => {
   const userId = req.userId;
@@ -53,9 +54,26 @@ export const createMemory = async (req: any, res: Response) => {
       return res.status(403).json({ message: "Not authorized for this couple" });
     }
 
-    // TODO: Implement image upload to Cloudinary or S3
-    // For now, using a placeholder URL since Cloudinary credentials are not in .env
-    const imageUrl = "https://via.placeholder.com/600";
+    // Upload image to Cloudinary
+    let imageUrl = "";
+    try {
+      const dataUri = `data:${mimeType};base64,${imageBase64}`;
+      const uploadResponse = await cloudinary.uploader.upload(dataUri, {
+        folder: "just-us-memories",
+      });
+      imageUrl = uploadResponse.secure_url;
+      console.log("✅ Image uploaded to Cloudinary:", imageUrl);
+    } catch (uploadError: any) {
+      console.error("❌ Cloudinary Upload Error:", uploadError.message);
+
+      // Fallback to placeholder ONLY if no credentials are provided
+      if (uploadError.message.includes("Must supply cloud_name")) {
+        console.warn("⚠️ Cloudinary credentials missing, using placeholder URL");
+        imageUrl = "https://via.placeholder.com/600?text=Cloudinary+Missing";
+      } else {
+        throw uploadError;
+      }
+    }
 
     // Insert memory row into DB
     const memory = await Memory.create({
@@ -68,8 +86,11 @@ export const createMemory = async (req: any, res: Response) => {
     await unlockAchievement(coupleId, "FIRST_MEMORY");
 
     return res.status(201).json({ memory });
-  } catch (error) {
+  } catch (error: any) {
     console.error("createMemory error:", error);
-    return res.status(500).json({ message: "Failed to save memory record" });
+    return res.status(500).json({
+      message: "Failed to save memory record",
+      error: error.message
+    });
   }
 };

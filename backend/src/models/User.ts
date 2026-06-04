@@ -21,6 +21,16 @@ const userSchema = new mongoose.Schema(
 
     name: String,
 
+    password: {
+      type: String,
+      select: false,
+    },
+
+    email_verified: {
+      type: Boolean,
+      default: false,
+    },
+
     birthday: Date,
 
     gender: String,

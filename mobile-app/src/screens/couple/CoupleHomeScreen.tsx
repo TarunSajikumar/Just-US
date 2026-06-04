@@ -17,6 +17,7 @@ import { SPACING } from '../../theme/spacing';
 import { FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
+import { authService } from '../../services/authService';
 import { notificationService } from '../../services/notificationService';
 import Toast from 'react-native-toast-message';
 import FloatingActionMenu from '../../components/FloatingActionMenu';

@@ -12,13 +12,11 @@ export interface TimelineEvent {
 
 export const timelineService = {
   /**
-   * GET /api/timeline
+   * GET /api/timeline/:coupleId
    * Fetch all timeline events for the couple.
    */
-  getEvents: async (type?: string): Promise<TimelineEvent[]> => {
-    const params: any = {};
-    if (type) params.type = type;
-    const response = await api.get('/timeline', { params });
+  getEvents: async (coupleId: string): Promise<TimelineEvent[]> => {
+    const response = await api.get(`/timeline/${coupleId}`);
     return response.data.events ?? [];
   },
 
@@ -27,6 +25,7 @@ export const timelineService = {
    * Create a new timeline event.
    */
   createEvent: async (data: {
+    coupleId: string;
     title: string;
     description?: string;
     date: string;

@@ -32,27 +32,39 @@ export const authService = {
     }
   },
 
-  /** POST /api/auth/send-otp */
-  sendOtp: async (contact: string) => {
-    const response = await api.post('/auth/send-otp', { email: contact });
+  /** POST /api/auth/login → { success, token, user } */
+  login: async (data: { email: string; password: string }) => {
+    const response = await api.post('/auth/login', data);
     return response.data;
   },
 
-  /** POST /api/auth/verify-otp → { success, verified, isNewUser, token, user } */
-  verifyOtp: async (contact: string, otp: string) => {
-    const response = await api.post('/auth/verify-otp', { email: contact, otp });
-    return response.data;
-  },
-
-  /** POST /api/auth/login → { token, user } */
-  login: async (contact: string) => {
-    const response = await api.post('/auth/login', { email: contact });
-    return response.data;
-  },
-
-  /** POST /api/auth/signup → { user, token } */
-  signup: async (data: { name: string; email?: string; phone?: string }) => {
+  /** POST /api/auth/signup → { message } */
+  signup: async (data: { name: string; email: string; password: string }) => {
     const response = await api.post('/auth/signup', data);
+    return response.data;
+  },
+
+  /** POST /api/auth/verify-signup → { success, token, user } */
+  verifySignup: async (data: { email: string; otp: string }) => {
+    const response = await api.post('/auth/verify-signup', data);
+    return response.data;
+  },
+
+  /** POST /api/auth/forgot-password → { message } */
+  forgotPassword: async (email: string) => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  /** POST /api/auth/verify-reset-otp → { success, resetToken } */
+  verifyResetOtp: async (email: string, otp: string) => {
+    const response = await api.post('/auth/verify-reset-otp', { email, otp });
+    return response.data;
+  },
+
+  /** POST /api/auth/reset-password → { success, message } */
+  resetPassword: async (data: { resetToken: string; newPassword: string }) => {
+    const response = await api.post('/auth/reset-password', data);
     return response.data;
   },
 
@@ -66,42 +78,12 @@ export const authService = {
     return response.data;
   },
 
-  /**
-   * GET /api/auth/me
-   * Returns full user profile including relationship_status, couple_id, and resolved partner.
-   * Updates the store automatically.
-   */
+  /** GET /api/auth/me */
   me: async () => {
     const response = await api.get('/auth/me');
     const profile = response.data;
     await authService.updateStoreWithProfile(profile);
     return profile;
-  },
-
-  resetStatus: async () => {
-    const response = await api.post('/users/reset-status');
-    const { user } = response.data;
-    await authService.updateStoreWithProfile(user);
-    return user;
-  },
-
-  /** GET /api/dashboard */
-  getDashboard: async () => {
-    const response = await api.get('/dashboard');
-    return response.data;
-  },
-
-  /** GET /api/couple/profile */
-  getCoupleProfile: async () => {
-    const response = await api.get('/couple/profile');
-    return response.data;
-  },
-
-  /** PUT /api/couple/relationship-date */
-  updateRelationshipDate: async (data: { relationshipStartDate?: string; anniversaryDate?: string | null; nextMeetDate?: string | null } | string) => {
-    const payload = typeof data === 'string' ? { relationshipStartDate: data } : data;
-    const response = await api.put('/couple/relationship-date', payload);
-    return response.data;
   },
 
   logout: async () => {

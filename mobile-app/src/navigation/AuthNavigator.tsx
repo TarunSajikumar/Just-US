@@ -13,7 +13,7 @@ export default function AuthNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        animationEnabled: true,
+        animation: 'slide_from_right',
       }}
     >
       <Stack.Screen name="LoginSignup" component={LoginSignupScreen} options={{ title: 'Welcome' }} />

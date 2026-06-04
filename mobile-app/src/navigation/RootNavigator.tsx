@@ -4,8 +4,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // Screens
 import SplashScreen from '../screens/auth/SplashScreen';
-import LoginSignupScreen from '../screens/auth/LoginSignupScreen';
+import LoginScreen from '../screens/auth/LoginScreen';
+import SignupScreen from '../screens/auth/SignupScreen';
 import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import SignupDetailsScreen from '../screens/auth/SignupDetailsScreen';
 import RelationshipSetupScreen from '../screens/auth/RelationshipSetupScreen';
 
@@ -31,8 +34,11 @@ function AuthNavigator() {
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="LoginSignup" component={LoginSignupScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Signup" component={SignupScreen} />
       <Stack.Screen name="OTP" component={OtpVerificationScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </Stack.Navigator>
   );
 }
@@ -62,12 +68,11 @@ export default function RootNavigator() {
   // Reset navigation when user logs out
   useEffect(() => {
     if (!token) {
-      console.log('Token cleared, resetting navigation to LoginSignup');
       if (navigationRef.current) {
         setTimeout(() => {
           navigationRef.current?.reset({
             index: 0,
-            routes: [{ name: 'LoginSignup' }],
+            routes: [{ name: 'Login' }],
           });
         }, 100);
       }
@@ -77,28 +82,17 @@ export default function RootNavigator() {
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        // 1. Load token + cached user from secure storage
         const authData = await getAuthData();
-
         if (authData?.token) {
           setToken(authData.token);
-
-          // Set cached user immediately so UI can show something
           if (authData.user) {
             setUser(authData.user);
           }
-
-          // 2. Fetch fresh profile from backend (gets real relationship_status + partner)
           try {
             await authService.me();
           } catch (e: any) {
-            // If the user is not found (404), it means the account was deleted or DB was reset
             if (e.response?.status === 404) {
-              console.log('User no longer exists in database, logging out...');
               await authService.logout();
-            } else {
-              // For other errors (like network timeout), we can use cached data
-              console.warn('Could not refresh profile, using cached data:', e.message);
             }
           }
         }
@@ -108,7 +102,6 @@ export default function RootNavigator() {
         setIsLoading(false);
       }
     };
-
     restoreSession();
   }, []);
 

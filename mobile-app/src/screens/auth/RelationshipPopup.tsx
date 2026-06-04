@@ -7,10 +7,10 @@ import {
 } from "react-native";
 import { FontAwesome } from '@expo/vector-icons';
 import { COLORS } from "../../theme/colors";
-import { useStore } from '../../store/useStore';
+import { useAuthStore } from '../../store/authStore';
 
 export default function RelationshipPopup({ navigation }: any) {
-  const { setRelationshipMode } = useStore();
+  const { setRelationshipMode } = useAuthStore();
 
   const handleSolo = () => {
     setRelationshipMode('SOLO');
