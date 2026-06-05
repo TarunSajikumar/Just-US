@@ -57,17 +57,32 @@ export const signup = async (req: Request, res: Response) => {
 
     const otp = generateOtp();
 
-    await PendingUser.findOneAndUpdate(
-      { email: normalizedEmail },
-      {
-        name,
-        password: null,
-        otp,
-        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        email_verified: false,
-      },
-      { upsert: true }
-    );
+    console.log("Before PendingUser upsert");
+
+    let pending;
+    try {
+      pending = await PendingUser.findOneAndUpdate(
+        { email: normalizedEmail },
+        {
+          email: normalizedEmail,
+          name,
+          password: null,
+          otp,
+          otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          email_verified: false,
+        },
+        {
+          upsert: true,
+          new: true,
+          runValidators: true,
+        }
+      );
+    } catch (err) {
+      console.error("PENDING USER ERROR:", err);
+      throw err;
+    }
+
+    console.log("After PendingUser upsert", pending?._id);
 
     console.log(`🔐 Generated OTP for ${normalizedEmail}: ${otp}`);
 
