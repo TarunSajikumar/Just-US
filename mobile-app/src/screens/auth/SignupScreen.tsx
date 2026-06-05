@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,21 +10,124 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Animated,
 } from 'react-native';
 import { COLORS } from '../../theme/colors';
 import { authService } from '../../services/authService';
+import { useAuthStore } from '../../store/authStore';
+import { saveAuthData } from '../../store/authStore';
+
+const OTP_LENGTH = 6;
+
+type SignupStep = 'email' | 'otp' | 'password';
 
 export default function SignupScreen({ navigation }: any) {
+  const setToken = useAuthStore((state) => state.setToken);
+
+  // Shared state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<SignupStep>('email');
 
-  const handleSignup = async () => {
-    if (!name || !email || !password || !confirmPassword) {
+  // OTP state
+  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const [otpTimer, setOtpTimer] = useState(30);
+  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  // Password state
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
+
+  // OTP timer effect
+  useEffect(() => {
+    if (currentStep !== 'otp' || otpTimer <= 0) return;
+    const interval = setInterval(() => setOtpTimer((prev) => prev - 1), 1000);
+    return () => clearInterval(interval);
+  }, [otpTimer, currentStep]);
+
+  const shake = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+    ]).start();
+  };
+
+  // Step 1: Send OTP
+  const handleSendOtp = async () => {
+    if (!name.trim() || !email.trim()) {
       setError('Please fill in all fields');
+      return;
+    }
+
+    if (!email.includes('@')) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await authService.signup({
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+      });
+
+      setCurrentStep('otp');
+      setOtpTimer(30);
+      setOtp(Array(OTP_LENGTH).fill(''));
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to send OTP';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Step 2: Verify OTP
+  const handleVerifyOtp = async () => {
+    const fullOtp = otp.join('');
+    if (fullOtp.length < OTP_LENGTH) {
+      shake();
+      setError('Please enter complete OTP');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await authService.verifyEmailOtp({
+        email: email.toLowerCase().trim(),
+        otp: fullOtp,
+      });
+
+      setEmailVerified(true);
+      setCurrentStep('password');
+      setError(null);
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Invalid OTP';
+      setError(errorMessage);
+      shake();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Step 3: Register with password
+  const handleRegister = async () => {
+    if (!password || !confirmPassword) {
+      setError('Please fill in all password fields');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
 
@@ -33,31 +136,66 @@ export default function SignupScreen({ navigation }: any) {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await authService.signup({
-        name: name.trim(),
+      const response = await authService.register({
         email: email.toLowerCase().trim(),
-        password: password.trim(),
+        password,
       });
 
-      setIsLoading(false);
-      // Navigate to OTP for verification
-      navigation.navigate('OTP', {
-        mode: 'signup',
-        email: email.toLowerCase().trim()
-      });
+      if (response.success && response.token && response.user) {
+        setToken(response.token);
+        await saveAuthData(response.token, response.user);
+        await authService.updateStoreWithProfile(response.user);
+        // Navigation will happen automatically due to store update
+      } else {
+        setError(response.message || 'Registration failed');
+      }
     } catch (err: any) {
-      setIsLoading(false);
-      const errorMessage = err?.response?.data?.message || err?.message || 'Signup failed';
+      const errorMessage = err?.response?.data?.message || err?.message || 'Registration failed';
       setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // OTP input handlers
+  const handleOtpChange = (value: string, index: number) => {
+    const digit = value.replace(/[^0-9]/g, '').slice(-1);
+    const newOtp = [...otp];
+    newOtp[index] = digit;
+    setOtp(newOtp);
+
+    if (digit && index < OTP_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await authService.signup({
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+      });
+
+      setOtpTimer(30);
+      setOtp(Array(OTP_LENGTH).fill(''));
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to resend OTP';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -76,81 +214,213 @@ export default function SignupScreen({ navigation }: any) {
           <Text style={styles.subtitle}>Create an account to start your journey</Text>
         </View>
 
-        <View style={styles.inputWrapper}>
-          <Text style={styles.inputLabel}>Full Name</Text>
-          <TextInput
-            placeholder="John Doe"
-            placeholderTextColor="#555"
-            value={name}
-            onChangeText={setName}
-            style={styles.input}
-            autoCorrect={false}
-          />
-        </View>
+        {/* STEP 1: Email & Name */}
+        {currentStep === 'email' && (
+          <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+            <View style={styles.inputWrapper}>
+              <Text style={styles.inputLabel}>Full Name</Text>
+              <TextInput
+                placeholder="John Doe"
+                placeholderTextColor="#555"
+                value={name}
+                onChangeText={(text) => {
+                  setName(text);
+                  setError(null);
+                }}
+                style={styles.input}
+                autoCorrect={false}
+                editable={!isLoading}
+              />
+            </View>
 
-        <View style={styles.inputWrapper}>
-          <Text style={styles.inputLabel}>Email Address</Text>
-          <TextInput
-            placeholder="you@email.com"
-            placeholderTextColor="#555"
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
+            <View style={styles.inputWrapper}>
+              <Text style={styles.inputLabel}>Email Address</Text>
+              <TextInput
+                placeholder="you@email.com"
+                placeholderTextColor="#555"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setError(null);
+                }}
+                style={styles.input}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!isLoading}
+              />
+            </View>
 
-        <View style={styles.inputWrapper}>
-          <Text style={styles.inputLabel}>Password</Text>
-          <TextInput
-            placeholder="Minimum 6 characters"
-            placeholderTextColor="#555"
-            value={password}
-            onChangeText={setPassword}
-            style={styles.input}
-            secureTextEntry
-          />
-        </View>
+            {error && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>⚠️ {error}</Text>
+              </View>
+            )}
 
-        <View style={styles.inputWrapper}>
-          <Text style={styles.inputLabel}>Confirm Password</Text>
-          <TextInput
-            placeholder="Repeat your password"
-            placeholderTextColor="#555"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            style={styles.input}
-            secureTextEntry
-          />
-        </View>
-
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
-          </View>
+            <TouchableOpacity
+              style={[styles.button, isLoading && styles.buttonDisabled]}
+              onPress={handleSendOtp}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.buttonText}>Send OTP</Text>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
         )}
 
-        <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
-          onPress={handleSignup}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.buttonText}>Continue</Text>
-          )}
-        </TouchableOpacity>
+        {/* STEP 2: OTP Verification */}
+        {currentStep === 'otp' && (
+          <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+            <View style={styles.stepInfo}>
+              <Text style={styles.stepLabel}>Step 2 of 3</Text>
+              <Text style={styles.stepDescription}>
+                Enter the 6-digit code sent to {email}
+              </Text>
+            </View>
 
-        <TouchableOpacity
-          style={styles.secondaryBtn}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.secondaryBtnText}>
-            Already have an account? <Text style={styles.link}>Login</Text>
-          </Text>
-        </TouchableOpacity>
+            <View style={styles.otpContainer}>
+              {otp.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  ref={(ref) => {
+                    inputRefs.current[index] = ref;
+                  }}
+                  style={styles.otpInput}
+                  value={digit}
+                  onChangeText={(value) => handleOtpChange(value, index)}
+                  onKeyPress={(e) => handleOtpKeyPress(e, index)}
+                  keyboardType="numeric"
+                  maxLength={1}
+                  editable={!isLoading}
+                />
+              ))}
+            </View>
+
+            <View style={styles.timerSection}>
+              {otpTimer > 0 ? (
+                <Text style={styles.timerText}>Resend in {otpTimer}s</Text>
+              ) : (
+                <TouchableOpacity onPress={handleResendOtp} disabled={isLoading}>
+                  <Text style={styles.resendLink}>Resend OTP</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {error && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>⚠️ {error}</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.button, isLoading && styles.buttonDisabled]}
+              onPress={handleVerifyOtp}
+              disabled={isLoading || otp.join('').length < OTP_LENGTH}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.buttonText}>Verify OTP</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setCurrentStep('email')}>
+              <Text style={styles.backText}>← Change Email</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* STEP 3: Password */}
+        {currentStep === 'password' && (
+          <Animated.View>
+            <View style={styles.stepInfo}>
+              <Text style={styles.stepLabel}>Step 3 of 3</Text>
+              <View style={styles.verifiedBadge}>
+                <Text style={styles.verifiedIcon}>✓</Text>
+                <Text style={styles.verifiedText}>Email Verified</Text>
+              </View>
+            </View>
+
+            <View style={styles.inputWrapper}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <TextInput
+                placeholder="Minimum 8 characters"
+                placeholderTextColor="#555"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setError(null);
+                }}
+                style={styles.input}
+                secureTextEntry
+                editable={!isLoading}
+              />
+            </View>
+
+            <View style={styles.inputWrapper}>
+              <Text style={styles.inputLabel}>Confirm Password</Text>
+              <TextInput
+                placeholder="Repeat your password"
+                placeholderTextColor="#555"
+                value={confirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  setError(null);
+                }}
+                style={styles.input}
+                secureTextEntry
+                editable={!isLoading}
+              />
+            </View>
+
+            {error && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>⚠️ {error}</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.button,
+                (!emailVerified ||
+                  password.length < 8 ||
+                  password !== confirmPassword ||
+                  isLoading) &&
+                  styles.buttonDisabled,
+              ]}
+              onPress={handleRegister}
+              disabled={
+                !emailVerified ||
+                password.length < 8 ||
+                password !== confirmPassword ||
+                isLoading
+              }
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.buttonText}>Create Account</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setCurrentStep('otp')}>
+              <Text style={styles.backText}>← Back</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {currentStep === 'email' && (
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={styles.secondaryBtnText}>
+              Already have an account? <Text style={styles.link}>Login</Text>
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -184,6 +454,42 @@ const styles = StyleSheet.create({
     color: COLORS.subtext,
     fontSize: 15,
   },
+  stepInfo: {
+    marginBottom: 24,
+  },
+  stepLabel: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  stepDescription: {
+    color: COLORS.subtext,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 12,
+  },
+  verifiedIcon: {
+    color: '#4ade80',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginRight: 6,
+  },
+  verifiedText: {
+    color: '#4ade80',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   inputWrapper: {
     marginBottom: 18,
   },
@@ -202,6 +508,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  otpInput: {
+    width: 50,
+    height: 60,
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  timerSection: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  timerText: {
+    color: COLORS.subtext,
+    fontSize: 13,
+  },
+  resendLink: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
   },
   button: {
     backgroundColor: COLORS.primary,
@@ -231,8 +567,14 @@ const styles = StyleSheet.create({
     color: '#fca5a5',
     fontSize: 14,
   },
+  backText: {
+    color: COLORS.subtext,
+    fontSize: 14,
+    textAlign: 'center',
+  },
   secondaryBtn: {
     alignItems: 'center',
+    marginTop: 20,
   },
   secondaryBtnText: {
     color: COLORS.subtext,

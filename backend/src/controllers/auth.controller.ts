@@ -40,38 +40,57 @@ const resolveFullProfile = async (user: any) => {
 
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email } = req.body;
+    console.log(`📝 Signup initiated for: ${email}`);
+
+    if (!name || !email) {
+      return res.status(400).json({ message: "Name and email are required" });
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
 
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
+      console.log(`⚠️ Signup failed: Email ${normalizedEmail} already exists`);
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
     const otp = generateOtp();
 
     await PendingUser.findOneAndUpdate(
       { email: normalizedEmail },
       {
         name,
-        password: hashedPassword,
+        password: null,
         otp,
         otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        email_verified: false,
       },
       { upsert: true }
     );
 
-    await sendOtpEmail(normalizedEmail, otp);
+    console.log(`🔐 Generated OTP for ${normalizedEmail}: ${otp}`);
+
+    try {
+      await sendOtpEmail(normalizedEmail, otp);
+      console.log(`✅ OTP sent to ${normalizedEmail}`);
+    } catch (mailError: any) {
+      console.error(`❌ Failed to send OTP email:`, mailError.message);
+      return res.status(500).json({ message: "Failed to send verification email. Please try again later." });
+    }
 
     res.status(200).json({ message: "OTP sent to email" });
   } catch (error: any) {
-    console.error("Signup error:", error);
-    res.status(500).json({ message: "Signup failed", error: error.message });
+    console.error("SIGNUP ERROR FULL:", error);
+
+    return res.status(500).json({
+      message: error?.message,
+      stack: error?.stack
+    });
   }
 };
 
-export const verifySignup = async (req: Request, res: Response) => {
+export const verifyEmailOtp = async (req: Request, res: Response) => {
   try {
     const { email, otp } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
@@ -85,10 +104,48 @@ export const verifySignup = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
+    // Mark email as verified in pending user
+    await PendingUser.findByIdAndUpdate(
+      pendingUser._id,
+      { email_verified: true },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+    });
+  } catch (error: any) {
+    console.error("Verify Email OTP error:", error);
+    res.status(500).json({ message: "Verification failed", error: error.message });
+  }
+};
+
+export const register = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters" });
+    }
+
+    // Verify email was already verified via OTP
+    const pendingUser = await PendingUser.findOne({ email: normalizedEmail });
+    if (!pendingUser || !pendingUser.email_verified) {
+      return res.status(400).json({ message: "Email not verified. Please verify your email first." });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await User.create({
       name: pendingUser.name,
       email: pendingUser.email,
-      password: pendingUser.password,
+      password: hashedPassword,
       email_verified: true,
       relationship_status: "none",
     });
@@ -110,8 +167,8 @@ export const verifySignup = async (req: Request, res: Response) => {
       user: fullProfile,
     });
   } catch (error: any) {
-    console.error("Verify Signup error:", error);
-    res.status(500).json({ message: "Verification failed", error: error.message });
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Registration failed", error: error.message });
   }
 };
 
@@ -189,16 +246,10 @@ export const verifyResetOtp = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    // Generate a temporary reset token
-    const resetToken = jwt.sign(
-      { email: normalizedEmail, purpose: "password_reset" },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "15m" }
-    );
-
-    await Otp.deleteOne({ _id: otpRecord._id });
-
-    res.status(200).json({ success: true, resetToken });
+    res.status(200).json({
+      success: true,
+      message: "OTP verified successfully",
+    });
   } catch (error: any) {
     console.error("Verify reset OTP error:", error);
     res.status(500).json({ message: "Verification failed" });
@@ -207,23 +258,33 @@ export const verifyResetOtp = async (req: Request, res: Response) => {
 
 export const resetPassword = async (req: Request, res: Response) => {
   try {
-    const { resetToken, newPassword } = req.body;
+    const { email, newPassword } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
 
-    const decoded = jwt.verify(resetToken, process.env.JWT_SECRET as string) as any;
-    if (decoded.purpose !== "password_reset") {
-      return res.status(400).json({ message: "Invalid reset token" });
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters" });
+    }
+
+    // Verify user exists
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await User.findOneAndUpdate(
-      { email: decoded.email },
-      { password: hashedPassword }
+      { email: normalizedEmail },
+      { password: hashedPassword },
+      { new: true }
     );
+
+    // Clean up OTP record
+    await Otp.deleteOne({ contact: normalizedEmail });
 
     res.status(200).json({ success: true, message: "Password updated successfully" });
   } catch (error: any) {
     console.error("Reset password error:", error);
-    res.status(400).json({ message: "Invalid or expired reset token" });
+    res.status(400).json({ message: "Password reset failed" });
   }
 };
 

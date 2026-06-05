@@ -1,7 +1,8 @@
 import express from "express";
 import {
   signup,
-  verifySignup,
+  verifyEmailOtp,
+  register,
   login,
   forgotPassword,
   verifyResetOtp,
@@ -14,7 +15,8 @@ import { authMiddleware } from "../middleware/auth.middleware";
 const router = express.Router();
 
 router.post("/signup", signup);
-router.post("/verify-signup", verifySignup);
+router.post("/verify-email-otp", verifyEmailOtp);
+router.post("/register", register);
 router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
 router.post("/verify-reset-otp", verifyResetOtp);

@@ -13,6 +13,28 @@ export const api = axios.create({
   },
 });
 
+// Debug interceptors
+api.interceptors.request.use((config) => {
+  console.log(
+    'REQUEST:',
+    config.method?.toUpperCase(),
+    config.baseURL + config.url
+  );
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => {
+    console.log('RESPONSE:', response.status, response.data);
+    return response;
+  },
+  (error) => {
+    console.log('AXIOS ERROR:', error?.response?.status);
+    console.log('AXIOS DATA:', error?.response?.data);
+    return Promise.reject(error);
+  }
+);
+
 // Interceptor for adding token to requests
 api.interceptors.request.use(
   async (config) => {

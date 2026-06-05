@@ -38,32 +38,47 @@ export const authService = {
     return response.data;
   },
 
-  /** POST /api/auth/signup → { message } */
-  signup: async (data: { name: string; email: string; password: string }) => {
-    const response = await api.post('/auth/signup', data);
+  /** POST /api/auth/signup → { message } - Step 1: Send OTP */
+  signup: async (data: { name: string; email: string }) => {
+    try {
+      console.log('Sending signup request:', data);
+      const response = await api.post('/auth/signup', data);
+      console.log('Signup response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.log('SIGNUP ERROR');
+      console.log(error);
+      console.log(error?.response?.data);
+      throw error;
+    }
+  },
+
+  /** POST /api/auth/verify-email-otp → { success, message } - Step 2: Verify email OTP */
+  verifyEmailOtp: async (data: { email: string; otp: string }) => {
+    const response = await api.post('/auth/verify-email-otp', data);
     return response.data;
   },
 
-  /** POST /api/auth/verify-signup → { success, token, user } */
-  verifySignup: async (data: { email: string; otp: string }) => {
-    const response = await api.post('/auth/verify-signup', data);
+  /** POST /api/auth/register → { success, token, user } - Step 3: Create account with password */
+  register: async (data: { email: string; password: string }) => {
+    const response = await api.post('/auth/register', data);
     return response.data;
   },
 
-  /** POST /api/auth/forgot-password → { message } */
+  /** POST /api/auth/forgot-password → { message } - Step 1: Send reset OTP */
   forgotPassword: async (email: string) => {
     const response = await api.post('/auth/forgot-password', { email });
     return response.data;
   },
 
-  /** POST /api/auth/verify-reset-otp → { success, resetToken } */
+  /** POST /api/auth/verify-reset-otp → { success, message } - Step 2: Verify reset OTP */
   verifyResetOtp: async (email: string, otp: string) => {
     const response = await api.post('/auth/verify-reset-otp', { email, otp });
     return response.data;
   },
 
-  /** POST /api/auth/reset-password → { success, message } */
-  resetPassword: async (data: { resetToken: string; newPassword: string }) => {
+  /** POST /api/auth/reset-password → { success, message } - Step 3: Update password */
+  resetPassword: async (data: { email: string; newPassword: string }) => {
     const response = await api.post('/auth/reset-password', data);
     return response.data;
   },

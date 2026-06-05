@@ -15,7 +15,7 @@ const pendingUserSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      default: null, // Only set after email verification
     },
     otp: {
       type: String,
@@ -24,6 +24,10 @@ const pendingUserSchema = new mongoose.Schema(
     otpExpiresAt: {
       type: Date,
       required: true,
+    },
+    email_verified: {
+      type: Boolean,
+      default: false, // Marks when email OTP is verified
     },
   },
   {
