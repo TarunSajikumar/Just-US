@@ -5,9 +5,14 @@ import { useAuthStore } from '../store/authStore';
 export const BASE_URL =
   process.env.EXPO_PUBLIC_API_URL!;
 
+// Request timeout configuration
+const REQUEST_TIMEOUT = 15000; // 15 seconds
+const RETRY_ATTEMPTS = 3;
+const RETRY_DELAY = 1000; // 1 second
+
 export const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: REQUEST_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -15,22 +20,29 @@ export const api = axios.create({
 
 // Debug interceptors
 api.interceptors.request.use((config) => {
+  const method = config.method?.toUpperCase() || 'UNKNOWN';
+  const url = config.baseURL + config.url;
   console.log(
-    'REQUEST:',
-    config.method?.toUpperCase(),
-    config.baseURL + config.url
+    `🔵 REQUEST: ${method} ${url}`
   );
   return config;
 });
 
 api.interceptors.response.use(
   (response) => {
-    console.log('RESPONSE:', response.status, response.data);
+    console.log(`✅ RESPONSE: ${response.status} ${response.statusText}`);
     return response;
   },
   (error) => {
-    console.log('AXIOS ERROR:', error?.response?.status);
-    console.log('AXIOS DATA:', error?.response?.data);
+    if (error.response) {
+      console.log(`❌ ERROR: ${error.response.status} - ${error.response.statusText}`);
+      console.log(`📝 ERROR DATA:`, error.response.data);
+    } else if (error.request) {
+      console.log(`❌ NO RESPONSE: Request made but no response received`);
+      console.log(`📡 Possible causes: Network error, timeout, or server unreachable`);
+    } else {
+      console.log(`❌ ERROR:`, error.message);
+    }
     return Promise.reject(error);
   }
 );
@@ -41,6 +53,7 @@ api.interceptors.request.use(
     const token = await storageService.getItem('userToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log(`🔐 Token added to request`);
     }
     return config;
   },
@@ -56,11 +69,27 @@ api.interceptors.response.use(
     const status = error.response ? error.response.status : null;
     const url = error.config ? error.config.url : '';
 
+    console.log(`🔍 Analyzing error: Status ${status}, URL: ${url}`);
+
     if (status === 401 || (status === 404 && url?.includes('/auth/me'))) {
       // Token expired, invalid, or user record deleted from database
+      console.log(`🚪 Logging out user due to ${status === 401 ? 'unauthorized' : '404'} response`);
       await storageService.deleteItem('userToken');
       useAuthStore.getState().logout();
     }
+
+    // Enhanced error messages
+    if (!error.response) {
+      // Network error or timeout
+      if (error.code === 'ECONNABORTED') {
+        error.message = 'Request timeout. Please check your internet connection.';
+      } else if (error.message === 'Network Error') {
+        error.message = 'Network error. Please check your internet connection and try again.';
+      } else {
+        error.message = error.message || 'Network connection failed';
+      }
+    }
+
     return Promise.reject(error);
   }
 );

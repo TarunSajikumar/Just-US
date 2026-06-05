@@ -18,11 +18,30 @@ import { authMiddleware } from "./middleware/auth.middleware";
 
 const app = express();
 
-app.use(cors());
-app.use(express.json({ limit: '10mb' })); // larger limit for base64 image uploads
+// Middleware
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  optionsSuccessStatus: 200,
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+// Health check endpoint
 app.get("/", (_, res) => {
-  res.send("JustUs Backend Running ❤️");
+  res.json({ 
+    status: "ok",
+    message: "JustUs Backend Running ❤️",
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get("/health", (_, res) => {
+  res.json({ 
+    status: "healthy",
+    timestamp: new Date().toISOString()
+  });
 });
 
 // API Routes
@@ -42,6 +61,25 @@ app.use("/api/timeline", timelineRoutes);
 
 app.get("/api/me", authMiddleware, (req: any, res) => {
   res.json({ userId: req.userId });
+});
+
+// 404 handler for undefined routes
+app.use((req, res) => {
+  console.log(`❌ 404 Not Found: ${req.method} ${req.path}`);
+  res.status(404).json({ 
+    message: "Endpoint not found",
+    path: req.path,
+    method: req.method 
+  });
+});
+
+// Error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("❌ Unhandled Error:", err);
+  res.status(err.status || 500).json({
+    message: err.message || "Internal server error",
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
 });
 
 export default app;

@@ -43,29 +43,45 @@ export const signup = async (req: Request, res: Response) => {
     const { name, email } = req.body;
     console.log(`📝 Signup initiated for: ${email}`);
 
+    // Validation
     if (!name || !email) {
+      console.log("❌ Missing name or email");
       return res.status(400).json({ message: "Name and email are required" });
+    }
+
+    if (typeof name !== 'string' || typeof email !== 'string') {
+      console.log("❌ Invalid name or email type");
+      return res.status(400).json({ message: "Name and email must be strings" });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      console.log(`❌ Invalid email format: ${normalizedEmail}`);
+      return res.status(400).json({ message: "Please enter a valid email address" });
+    }
+
+    // Check if user already exists
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       console.log(`⚠️ Signup failed: Email ${normalizedEmail} already exists`);
       return res.status(400).json({ message: "Email already registered" });
     }
 
+    // Generate OTP
     const otp = generateOtp();
+    console.log(`🔐 Generated OTP for ${normalizedEmail}: ${otp}`);
 
-    console.log("Before PendingUser upsert");
-
+    // Create or update PendingUser
     let pending;
     try {
       pending = await PendingUser.findOneAndUpdate(
         { email: normalizedEmail },
         {
           email: normalizedEmail,
-          name,
+          name: name.trim(),
           password: null,
           otp,
           otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
@@ -77,30 +93,30 @@ export const signup = async (req: Request, res: Response) => {
           runValidators: true,
         }
       );
+      console.log(`✅ PendingUser created/updated: ${pending?._id}`);
     } catch (err) {
-      console.error("PENDING USER ERROR:", err);
-      throw err;
+      console.error("❌ PENDING USER ERROR:", err);
+      return res.status(500).json({ message: "Failed to process registration. Please try again." });
     }
 
-    console.log("After PendingUser upsert", pending?._id);
-
-    console.log(`🔐 Generated OTP for ${normalizedEmail}: ${otp}`);
-
+    // Send OTP email
     try {
       await sendOtpEmail(normalizedEmail, otp);
-      console.log(`✅ OTP sent to ${normalizedEmail}`);
+      console.log(`✅ OTP email sent to ${normalizedEmail}`);
+      return res.status(200).json({ message: "OTP sent to email. Please check your inbox." });
     } catch (mailError: any) {
-      console.error(`❌ Failed to send OTP email:`, mailError.message);
-      return res.status(500).json({ message: "Failed to send verification email. Please try again later." });
+      console.error(`❌ Email sending failed:`, mailError.message);
+      // Still return success but inform user to check if email was received
+      return res.status(200).json({ 
+        message: "Signup initiated. If you don't receive an email in 2 minutes, please try again.",
+        debug: process.env.NODE_ENV === 'development' ? mailError.message : undefined
+      });
     }
-
-    res.status(200).json({ message: "OTP sent to email" });
   } catch (error: any) {
-    console.error("SIGNUP ERROR FULL:", error);
-
+    console.error("❌ SIGNUP ERROR:", error);
     return res.status(500).json({
-      message: error?.message,
-      stack: error?.stack
+      message: "An unexpected error occurred. Please try again later.",
+      ...(process.env.NODE_ENV === 'development' && { error: error?.message })
     });
   }
 };
