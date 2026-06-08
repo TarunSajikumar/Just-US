@@ -60,15 +60,16 @@ const PollsCard: React.FC<PollsCardProps> = ({ polls, onVote, onAddPoll }) => {
       </View>
 
       {polls.map((poll) => {
-        const userVote = poll.votes[user?._id || ''];
-        const totalVotes = Object.keys(poll.votes).length;
+        const votes = poll.votes || {};
+        const userVote = votes[user?._id || ''];
+        const totalVotes = Object.keys(votes).length;
         const timeLeft = getTimeLeft(poll.endsAt);
 
         return (
           <View key={poll._id} style={styles.pollItem}>
             <Text style={styles.question}>{poll.question}</Text>
             {poll.options.map((option, index) => {
-              const optionVotes = Object.values(poll.votes).filter((v) => v === index).length;
+              const optionVotes = Object.values(votes).filter((v) => v === index).length;
               const percentage = totalVotes > 0 ? (optionVotes / totalVotes) * 100 : 0;
               const isSelected = userVote === index;
 
