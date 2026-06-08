@@ -11,10 +11,21 @@ import {
   TextInput,
   RefreshControl,
   Dimensions,
-  Animated,
+  Animated as RNAnimated,
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  ZoomIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withRepeat,
+  withSequence,
+} from 'react-native-reanimated';
 import { COLORS } from '../../theme/colors';
 import { SPACING } from '../../theme/spacing';
 import { FontAwesome, MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
@@ -281,18 +292,18 @@ const EnhancedQuickLoveButton = React.memo(({
 
 // Add this component for floating hearts animation
 const FloatingHeart = ({ style, children }: { style?: any; children: React.ReactNode }) => {
-  const translateY = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(0.4)).current;
+  const translateY = useRef(new RNAnimated.Value(0)).current;
+  const opacity = useRef(new RNAnimated.Value(0.4)).current;
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(translateY, {
+    RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(translateY, {
           toValue: -10,
           duration: 2000,
           useNativeDriver: true,
         }),
-        Animated.timing(translateY, {
+        RNAnimated.timing(translateY, {
           toValue: 0,
           duration: 2000,
           useNativeDriver: true,
@@ -300,14 +311,14 @@ const FloatingHeart = ({ style, children }: { style?: any; children: React.React
       ])
     ).start();
 
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
+    RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(opacity, {
           toValue: 0.8,
           duration: 2000,
           useNativeDriver: true,
         }),
-        Animated.timing(opacity, {
+        RNAnimated.timing(opacity, {
           toValue: 0.2,
           duration: 2000,
           useNativeDriver: true,
@@ -317,7 +328,7 @@ const FloatingHeart = ({ style, children }: { style?: any; children: React.React
   }, []);
 
   return (
-    <Animated.Text
+    <RNAnimated.Text
       style={[
         style,
         {
@@ -327,7 +338,7 @@ const FloatingHeart = ({ style, children }: { style?: any; children: React.React
       ]}
     >
       {children}
-    </Animated.Text>
+    </RNAnimated.Text>
   );
 };
 
@@ -345,6 +356,64 @@ export default function CoupleHomeScreen({ navigation }: any) {
   } = useAuthStore();
 
   const quickLoveEnabled = user?.preferences?.quickLoveNotifications !== false;
+
+  // ===== REANIMATED MOTION STATE =====
+  const heartScale = useSharedValue(1);
+  const ring1Scale = useSharedValue(1);
+  const ring1Opacity = useSharedValue(0.4);
+  const ring2Scale = useSharedValue(1);
+  const ring2Opacity = useSharedValue(0.2);
+
+  useEffect(() => {
+    heartScale.value = withRepeat(
+      withSequence(
+        withSpring(1.2, { damping: 4, stiffness: 80 }),
+        withSpring(1, { damping: 4, stiffness: 80 })
+      ),
+      -1,
+      true
+    );
+
+    ring1Scale.value = withRepeat(
+      withTiming(1.6, { duration: 2000 }),
+      -1,
+      false
+    );
+    ring1Opacity.value = withRepeat(
+      withTiming(0, { duration: 2000 }),
+      -1,
+      false
+    );
+
+    const timer = setTimeout(() => {
+      ring2Scale.value = withRepeat(
+        withTiming(1.6, { duration: 2000 }),
+        -1,
+        false
+      );
+      ring2Opacity.value = withRepeat(
+        withTiming(0, { duration: 2000 }),
+        -1,
+        false
+      );
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const heartAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heartScale.value }],
+  }));
+
+  const ring1Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring1Scale.value }],
+    opacity: ring1Opacity.value,
+  }));
+
+  const ring2Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring2Scale.value }],
+    opacity: ring2Opacity.value,
+  }));
 
   // ===== STATE =====
   const [isSendingPing, setIsSendingPing] = useState(false);
@@ -409,7 +478,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
   const [isAddingCustomMessage, setIsAddingCustomMessage] = useState(false);
 
   // Animation
-  const daysAnimated = useRef(new Animated.Value(0)).current;
+  const daysAnimated = useRef(new RNAnimated.Value(0)).current;
   const [displayDays, setDisplayDays] = useState(0);
 
   // Computed Values
@@ -432,7 +501,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
   // Animate days count-up
   useEffect(() => {
     if (!loadingDashboard && daysOfLove > 0) {
-      Animated.timing(daysAnimated, {
+      RNAnimated.timing(daysAnimated, {
         toValue: daysOfLove,
         duration: 1200,
         useNativeDriver: false,
@@ -909,56 +978,58 @@ export default function CoupleHomeScreen({ navigation }: any) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} />}
       >
         {/* ===== ENHANCED HEADER SECTION ===== */}
-        <View style={styles.headerContainer}>
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.greetingText}>{greeting}</Text>
-              <Text style={styles.userNameText}>{user?.name?.split(' ')[0] || 'Love'}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              {/* Ping/Miss You Button */}
-              <TouchableOpacity
-                style={styles.notificationBtnEnhanced}
-                onPress={() => sendMissYouNotification()}
-                onLongPress={() => {
-                  Alert.alert(
-                    'Quick Ping ❤️',
-                    'Choose a message to send to your partner',
-                    [
-                      { text: '❤️ Miss You', onPress: () => handleQuickPing('I miss you ❤️') },
-                      { text: '📞 Call Me', onPress: () => handleQuickPing('Call me when you are free 📞') },
-                      { text: '🥺 Need You', onPress: () => handleQuickPing('I need you right now 🥺') },
-                      { text: '😘 Thinking of You', onPress: () => handleQuickPing('Thinking of you 😘') },
-                      { text: 'Cancel', style: 'cancel' },
-                    ]
-                  );
-                }}
-                disabled={isSendingPing}
-              >
-                {isSendingPing ? (
-                  <ActivityIndicator color={COLORS.primary} size="small" />
-                ) : (
-                  <FontAwesome name="heart" size={18} color="#fff" />
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.profileIcon}
-                onPress={() => navigation.navigate('Settings')}
-              >
-                <LinearGradient
-                  colors={[COLORS.primary, '#C23576']}
-                  style={styles.profileGradient}
+        <Animated.View entering={FadeInDown.duration(400)}>
+          <View style={styles.headerContainer}>
+            <View style={styles.headerTop}>
+              <View>
+                <Text style={styles.greetingText}>{greeting}</Text>
+                <Text style={styles.userNameText}>{user?.name?.split(' ')[0] || 'Love'}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {/* Ping/Miss You Button */}
+                <TouchableOpacity
+                  style={styles.notificationBtnEnhanced}
+                  onPress={() => sendMissYouNotification()}
+                  onLongPress={() => {
+                    Alert.alert(
+                      'Quick Ping ❤️',
+                      'Choose a message to send to your partner',
+                      [
+                        { text: '❤️ Miss You', onPress: () => handleQuickPing('I miss you ❤️') },
+                        { text: '📞 Call Me', onPress: () => handleQuickPing('Call me when you are free 📞') },
+                        { text: '🥺 Need You', onPress: () => handleQuickPing('I need you right now 🥺') },
+                        { text: '😘 Thinking of You', onPress: () => handleQuickPing('Thinking of you 😘') },
+                        { text: 'Cancel', style: 'cancel' },
+                      ]
+                    );
+                  }}
+                  disabled={isSendingPing}
                 >
-                  <Text style={styles.profileInitials}>{userInitials}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                  {isSendingPing ? (
+                    <ActivityIndicator color={COLORS.primary} size="small" />
+                  ) : (
+                    <FontAwesome name="heart" size={18} color="#fff" />
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.profileIcon}
+                  onPress={() => navigation.navigate('Settings')}
+                >
+                  <LinearGradient
+                    colors={[COLORS.primary, '#C23576']}
+                    style={styles.profileGradient}
+                  >
+                    <Text style={styles.profileInitials}>{userInitials}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </Animated.View>
 
         {/* ===== REDESIGNED DAYS TOGETHER CARD ===== */}
-        <View style={styles.daysCardContainer}>
+        <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.daysCardContainer}>
           <LinearGradient
             colors={['#FF4D8D', '#C23576', '#8B1A5C']}
             style={styles.daysCardGradient}
@@ -995,9 +1066,11 @@ export default function CoupleHomeScreen({ navigation }: any) {
               </View>
 
               <View style={styles.heartAnimation}>
-                <View style={styles.heartBeatRing} />
-                <View style={styles.heartBeatRing2} />
-                <FontAwesome name="heart" size={28} color="#fff" />
+                <Animated.View style={[styles.heartBeatRing, ring1Style]} />
+                <Animated.View style={[styles.heartBeatRing2, ring2Style]} />
+                <Animated.View style={heartAnimatedStyle}>
+                  <FontAwesome name="heart" size={28} color="#fff" />
+                </Animated.View>
               </View>
 
               <View style={styles.avatarWrapper}>
@@ -1016,7 +1089,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
             {/* Days Counter with animation */}
             <View style={styles.daysCounterSection}>
               <Text style={styles.daysLabel}>Days of Love</Text>
-              <Text style={styles.daysNumber}>{displayDays}</Text>
+              <Animated.Text entering={ZoomIn.delay(300).duration(600)} style={styles.daysNumber}>{displayDays}</Animated.Text>
               <View style={styles.daysBadgeContainer}>
                 <LinearGradient
                   colors={['rgba(255, 255, 255, 0.25)', 'rgba(255, 255, 255, 0.1)']}
@@ -1054,139 +1127,154 @@ export default function CoupleHomeScreen({ navigation }: any) {
               <FloatingHeart style={[styles.floatingHeart, { bottom: 50, right: 25 }]}>💗</FloatingHeart>
             </View>
           </LinearGradient>
-        </View>
+        </Animated.View>
 
         {/* Partner Status Card */}
-        <View style={styles.partnerCard}>
-          <View style={styles.partnerCardLeft}>
-            <View style={styles.heartCircle}>
-              <FontAwesome name="heart" size={16} color={COLORS.primary} />
+        <Animated.View entering={FadeInDown.delay(200).duration(600)}>
+          <View style={styles.partnerCard}>
+            <View style={styles.partnerCardLeft}>
+              <View style={styles.heartCircle}>
+                <FontAwesome name="heart" size={16} color={COLORS.primary} />
+              </View>
+              <View>
+                <Text style={styles.partnerStatus}>Connected with {partner.name}</Text>
+                <Text style={styles.partnerOnlineText}>{getPartnerStatusDisplay()}</Text>
+              </View>
             </View>
-            <View>
-              <Text style={styles.partnerStatus}>Connected with {partner.name}</Text>
-              <Text style={styles.partnerOnlineText}>{getPartnerStatusDisplay()}</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>💑 Couple</Text>
             </View>
           </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>💑 Couple</Text>
-          </View>
-        </View>
-
+        </Animated.View>
 
         {/* Mood Section */}
-        <View style={styles.moodCard}>
-          <View style={styles.moodHeader}>
-            <Text style={styles.moodLabel}>😊 Mood Check</Text>
-            <TouchableOpacity onPress={() => setMoodModalVisible(true)}>
-              <Text style={styles.moodUpdateText}>Update</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.moodRow}>
-            <View style={styles.moodItem}>
-              <Text style={styles.moodItemLabel}>Your Mood</Text>
-              <Text style={styles.moodValue}>
-                {myMood?.emoji || '😊'} {myMood?.mood || 'Not set'}
-              </Text>
+        <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+          <View style={styles.moodCard}>
+            <View style={styles.moodHeader}>
+              <Text style={styles.moodLabel}>😊 Mood Check</Text>
+              <TouchableOpacity onPress={() => setMoodModalVisible(true)}>
+                <Text style={styles.moodUpdateText}>Update</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.moodDivider} />
-            <View style={styles.moodItem}>
-              <Text style={styles.moodItemLabel}>Partner's Mood</Text>
-              <Text style={styles.moodValue}>
-                {partnerMood?.emoji || '😊'} {partnerMood?.mood || 'Not shared'}
-              </Text>
+            <View style={styles.moodRow}>
+              <View style={styles.moodItem}>
+                <Text style={styles.moodItemLabel}>Your Mood</Text>
+                <Text style={styles.moodValue}>
+                  {myMood?.emoji || '😊'} {myMood?.mood || 'Not set'}
+                </Text>
+              </View>
+              <View style={styles.moodDivider} />
+              <View style={styles.moodItem}>
+                <Text style={styles.moodItemLabel}>Partner's Mood</Text>
+                <Text style={styles.moodValue}>
+                  {partnerMood?.emoji || '😊'} {partnerMood?.mood || 'Not shared'}
+                </Text>
+              </View>
             </View>
-          </View>
 
-          {/* Quick Mood Selector directly on the card */}
-          <View style={styles.cardQuickMoodContainer}>
-            <Text style={styles.cardQuickMoodTitle}>How are you feeling today?</Text>
-            <View style={styles.cardQuickMoodRow}>
-              {[
-                { emoji: '😊', label: 'Happy', color: '#FFD93D' },
-                { emoji: '😍', label: 'Loved', color: '#FF6B6B' },
-                { emoji: '😔', label: 'Sad', color: '#6C9EBF' },
-                { emoji: '😤', label: 'Angry', color: '#E74C3C' },
-                { emoji: '😴', label: 'Tired', color: '#9B59B6' },
-              ].map((mood) => (
-                <TouchableOpacity
-                  key={mood.label}
-                  style={[
-                    styles.cardQuickMoodButton,
-                    myMood?.emoji === mood.emoji && { borderColor: mood.color, backgroundColor: `${mood.color}15` }
-                  ]}
-                  onPress={() => handleQuickMoodSelect(mood.label, mood.emoji)}
-                >
-                  <Text style={styles.cardQuickMoodEmoji}>{mood.emoji}</Text>
-                  <Text style={[styles.cardQuickMoodLabel, myMood?.emoji === mood.emoji && { color: mood.color }]}>
-                    {mood.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            {/* Quick Mood Selector directly on the card */}
+            <View style={styles.cardQuickMoodContainer}>
+              <Text style={styles.cardQuickMoodTitle}>How are you feeling today?</Text>
+              <View style={styles.cardQuickMoodRow}>
+                {[
+                  { emoji: '😊', label: 'Happy', color: '#FFD93D' },
+                  { emoji: '😍', label: 'Loved', color: '#FF6B6B' },
+                  { emoji: '😔', label: 'Sad', color: '#6C9EBF' },
+                  { emoji: '😤', label: 'Angry', color: '#E74C3C' },
+                  { emoji: '😴', label: 'Tired', color: '#9B59B6' },
+                ].map((mood) => (
+                  <TouchableOpacity
+                    key={mood.label}
+                    style={[
+                      styles.cardQuickMoodButton,
+                      myMood?.emoji === mood.emoji && { borderColor: mood.color, backgroundColor: `${mood.color}15` }
+                    ]}
+                    onPress={() => handleQuickMoodSelect(mood.label, mood.emoji)}
+                  >
+                    <Text style={styles.cardQuickMoodEmoji}>{mood.emoji}</Text>
+                    <Text style={[styles.cardQuickMoodLabel, myMood?.emoji === mood.emoji && { color: mood.color }]}>
+                      {mood.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Daily Love Note */}
-        <View style={styles.noteCard}>
-          <View style={styles.noteHeader}>
-            <Text style={styles.noteTitle}>💌 Daily Love Note</Text>
-            <FontAwesome name="quote-right" size={14} color={COLORS.primary} />
+        <Animated.View entering={FadeInDown.delay(400).duration(600)}>
+          <View style={styles.noteCard}>
+            <View style={styles.noteHeader}>
+              <Text style={styles.noteTitle}>💌 Daily Love Note</Text>
+              <FontAwesome name="quote-right" size={14} color={COLORS.primary} />
+            </View>
+            {partnerNote ? (
+              <Text style={styles.noteText}>"{partnerNote.content}"</Text>
+            ) : (
+              <Text style={styles.noteEmpty}>No love note today yet 💌</Text>
+            )}
+            <TouchableOpacity style={styles.leaveNoteBtn} onPress={() => setNoteModalVisible(true)}>
+              <FontAwesome name="pencil" size={12} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.leaveNoteBtnText}>Write Note</Text>
+            </TouchableOpacity>
           </View>
-          {partnerNote ? (
-            <Text style={styles.noteText}>"{partnerNote.content}"</Text>
-          ) : (
-            <Text style={styles.noteEmpty}>No love note today yet 💌</Text>
-          )}
-          <TouchableOpacity style={styles.leaveNoteBtn} onPress={() => setNoteModalVisible(true)}>
-            <FontAwesome name="pencil" size={12} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.leaveNoteBtnText}>Write Note</Text>
-          </TouchableOpacity>
-        </View>
+        </Animated.View>
 
         {/* Anniversary Countdown */}
         {anniversaryDate && (
-          <View style={styles.anniversaryCard}>
-            <Text style={styles.anniversaryTitle}>🎉 Next Anniversary</Text>
-            <Text style={styles.anniversaryDate}>
-              {new Date(anniversaryDate).toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            </Text>
-            <Text style={styles.anniversaryDays}>
-              {Math.ceil((new Date(anniversaryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days to go
-            </Text>
-          </View>
+          <Animated.View entering={FadeInDown.delay(450).duration(600)}>
+            <View style={styles.anniversaryCard}>
+              <Text style={styles.anniversaryTitle}>🎉 Next Anniversary</Text>
+              <Text style={styles.anniversaryDate}>
+                {new Date(anniversaryDate).toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </Text>
+              <Text style={styles.anniversaryDays}>
+                {Math.ceil((new Date(anniversaryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days to go
+              </Text>
+            </View>
+          </Animated.View>
         )}
 
         {/* Shared Goals */}
-        <Text style={styles.sectionDivider}>🎯 Shared Goals</Text>
-        <GoalsCard
-          goals={goals}
-          onUpdateProgress={handleUpdateGoalProgress}
-          onAddGoal={() => setGoalModalVisible(true)}
-        />
+        <Animated.View entering={FadeInDown.delay(500).duration(600)}>
+          <Text style={styles.sectionDivider}>🎯 Shared Goals</Text>
+          <GoalsCard
+            goals={goals}
+            onUpdateProgress={handleUpdateGoalProgress}
+            onAddGoal={() => setGoalModalVisible(true)}
+          />
+        </Animated.View>
 
         {/* Active Polls */}
-        <Text style={styles.sectionDivider}>📊 Active Polls</Text>
-        <PollsCard
-          polls={polls}
-          onVote={handleVote}
-          onAddPoll={() => setPollModalVisible(true)}
-        />
+        <Animated.View entering={FadeInDown.delay(600).duration(600)}>
+          <Text style={styles.sectionDivider}>📊 Active Polls</Text>
+          <PollsCard
+            polls={polls}
+            onVote={handleVote}
+            onAddPoll={() => setPollModalVisible(true)}
+          />
+        </Animated.View>
 
         {/* Upcoming Events */}
-        <Text style={styles.sectionDivider}>📅 Upcoming Events</Text>
-        <UpcomingEventsCard
-          events={events}
-          onAddEvent={() => setEventModalVisible(true)}
-          onRefresh={fetchDashboardData}
-        />
+        <Animated.View entering={FadeInDown.delay(700).duration(600)}>
+          <Text style={styles.sectionDivider}>📅 Upcoming Events</Text>
+          <UpcomingEventsCard
+            events={events}
+            onAddEvent={() => setEventModalVisible(true)}
+            onRefresh={fetchDashboardData}
+          />
+        </Animated.View>
 
         {/* Activity Feed */}
-        <Text style={styles.sectionDivider}>📱 Recent Activity</Text>
-        <ActivityFeedCard activities={activities} />
+        <Animated.View entering={FadeInDown.delay(800).duration(600)}>
+          <Text style={styles.sectionDivider}>📱 Recent Activity</Text>
+          <ActivityFeedCard activities={activities} />
+        </Animated.View>
 
         {/* Bottom padding for FAB */}
         <View style={{ height: 100 }} />
