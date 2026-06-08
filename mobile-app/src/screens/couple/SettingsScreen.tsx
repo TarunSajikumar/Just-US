@@ -118,6 +118,17 @@ export default function SettingsScreen({ navigation }: any) {
   const [language, setLanguage] = useState('en');
   const [fontSize, setFontSize] = useState('medium');
   const [exportingData, setExportingData] = useState(false);
+
+  // ===== COUPLE+ SETTINGS =====
+  const [coupleFeatureEnabled, setCoupleFeatureEnabled] = useState(false);
+  const [coupleFeatureStatus, setCoupleFeatureStatus] = useState<'pending' | 'active' | 'declined' | null>(null);
+  const [isTogglingCoupleFeature, setIsTogglingCoupleFeature] = useState(false);
+
+  // ===== QUICK LOVE BUTTON SETTINGS =====
+  const [quickLoveNotifications, setQuickLoveNotifications] = useState(true);
+  const [showQuickLoveMessages, setShowQuickLoveMessages] = useState(false);
+  const [defaultQuickMessage, setDefaultQuickMessage] = useState('I Love You ❤️');
+  const [isSavingDefaultMessage, setIsSavingDefaultMessage] = useState(false);
   
   const nicknameInputRef = useRef<TextInput>(null);
   const pingInputRef = useRef<TextInput>(null);
@@ -128,7 +139,25 @@ export default function SettingsScreen({ navigation }: any) {
       if (prefs?.language) setLanguage(prefs.language);
       if (prefs?.fontSize) setFontSize(prefs.fontSize);
     }).catch(() => { /* silent fail — preferences are non-critical */ });
+
+    api.get('/users/settings/quick-love-default').then((res) => {
+      if (res?.data?.defaultMessage) {
+        setDefaultQuickMessage(res.data.defaultMessage);
+      }
+    }).catch(() => {});
   }, []);
+
+  const handleSaveDefaultQuickMessage = useCallback(async () => {
+    setIsSavingDefaultMessage(true);
+    try {
+      await api.post('/users/settings/quick-love-default', { defaultMessage: defaultQuickMessage });
+      Toast.show({ type: 'success', text1: 'Default message saved!' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to save' });
+    } finally {
+      setIsSavingDefaultMessage(false);
+    }
+  }, [defaultQuickMessage]);
 
   const formatDate = useCallback((dateString?: string | null) => {
     if (!dateString) return 'Not set';
@@ -347,6 +376,48 @@ export default function SettingsScreen({ navigation }: any) {
     }
   }, []);
 
+  // ===== COUPLE+ HANDLERS =====
+
+  const handleToggleCoupleFeature = useCallback(async (enabled: boolean) => {
+    setIsTogglingCoupleFeature(true);
+    try {
+      if (enabled) {
+        await api.post('/couple/request-feature');
+        setCoupleFeatureStatus('pending');
+        Toast.show({
+          type: 'info',
+          text1: 'Request Sent 💕',
+          text2: 'Waiting for your partner to accept',
+        });
+      } else {
+        await api.post('/couple/disable-feature');
+        setCoupleFeatureStatus('declined');
+        setCoupleFeatureEnabled(false);
+        Toast.show({
+          type: 'info',
+          text1: 'Couple+ Disabled',
+        });
+      }
+    } catch (error: any) {
+      Toast.show({ type: 'error', text1: 'Failed to update Couple+ settings' });
+    } finally {
+      setIsTogglingCoupleFeature(false);
+    }
+  }, []);
+
+  const handleToggleQuickLoveNotifications = useCallback(async (enabled: boolean) => {
+    try {
+      await userService.updatePreferences({ quickLoveNotifications: enabled });
+      setQuickLoveNotifications(enabled);
+      Toast.show({
+        type: 'success',
+        text1: enabled ? 'Quick Love notifications enabled' : 'Quick Love notifications disabled',
+      });
+    } catch {
+      Toast.show({ type: 'error', text1: 'Failed to update settings' });
+    }
+  }, []);
+
   useEffect(() => {
     if (isNicknameModalVisible) {
       setTimeout(() => nicknameInputRef.current?.focus(), 100);
@@ -479,6 +550,105 @@ export default function SettingsScreen({ navigation }: any) {
               >
                 <Text style={styles.editDateText}>Edit Message</Text>
               </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {/* ===== COUPLE PREFERENCES ===== */}
+        {user?.relationship_status === 'couple' && (
+          <>
+            <Text style={styles.sectionTitle}>COUPLE PREFERENCES ❤️</Text>
+            <View style={styles.section}>
+              <SettingItem
+                icon="bell"
+                label="Quick Love Button"
+                value={quickLoveNotifications}
+                onToggle={handleToggleQuickLoveNotifications}
+              />
+              <SettingItem
+                icon="heart"
+                label="Activity Feed Notifications"
+                value={notificationsEnabled}
+                onToggle={handleToggleNotifications}
+              />
+              <SettingItem
+                icon="calendar"
+                label="Goal Notifications"
+                value={notificationsEnabled}
+                onToggle={() => {}}
+              />
+              <SettingItem
+                icon="pie-chart"
+                label="Poll Notifications"
+                value={notificationsEnabled}
+                onToggle={() => {}}
+              />
+              <SettingItem
+                icon="gift"
+                label="Event Notifications"
+                value={notificationsEnabled}
+                onToggle={() => {}}
+                isLast
+              />
+            </View>
+
+            <Text style={styles.sectionTitle}>QUICK LOVE SETTINGS ❤️</Text>
+            <View style={styles.section}>
+              <View style={styles.settingItem}>
+                <Text style={styles.settingLabel}>Default Quick Love Message</Text>
+                <TextInput
+                  style={styles.settingInput}
+                  value={defaultQuickMessage}
+                  onChangeText={setDefaultQuickMessage}
+                  placeholder="I Love You ❤️"
+                  placeholderTextColor="#777"
+                  maxLength={50}
+                />
+                <TouchableOpacity 
+                  style={styles.saveMessageBtn} 
+                  onPress={handleSaveDefaultQuickMessage}
+                  disabled={isSavingDefaultMessage}
+                >
+                  {isSavingDefaultMessage ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.saveMessageBtnText}>Save Default</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.helperText}>
+                💡 Single tap sends this message. Long press to choose from options.
+              </Text>
+            </View>
+
+            {/* ===== COUPLE+ SETTINGS ===== */}
+            <Text style={styles.sectionTitle}>COUPLE+ FEATURES 🔒</Text>
+            <View style={styles.section}>
+              <View style={styles.coupleFeatureInfo}>
+                <Text style={styles.coupleFeatureLabel}>Exclusive Features</Text>
+                <Text style={styles.coupleFeatureDesc}>
+                  Connection Meter • Couple Questions • Date Ideas • Challenges • Private Wishlist
+                </Text>
+              </View>
+              <SettingItem
+                icon="lock"
+                label={
+                  coupleFeatureStatus === 'active'
+                    ? 'Couple+ Active ✓'
+                    : coupleFeatureStatus === 'pending'
+                    ? 'Request Pending...'
+                    : 'Enable Couple+'
+                }
+                value={coupleFeatureEnabled || coupleFeatureStatus === 'active'}
+                onToggle={handleToggleCoupleFeature}
+                loading={isTogglingCoupleFeature}
+                isLast
+              />
+              {coupleFeatureStatus === 'pending' && (
+                <Text style={styles.coupleFeaturePending}>
+                  ⏳ Waiting for {partner?.name || 'your partner'} to accept
+                </Text>
+              )}
             </View>
           </>
         )}
@@ -720,8 +890,76 @@ const styles = StyleSheet.create({
   cancelButtonText: { color: COLORS.subtext, fontWeight: 'bold' },
   saveButtonText: { color: '#fff', fontWeight: 'bold' },
   disabledButton: { opacity: 0.6 },
+
+  // ===== COUPLE FEATURE STYLES =====
+  coupleFeatureInfo: {
+    backgroundColor: 'rgba(255,77,109,0.08)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,77,109,0.15)',
+  },
+  coupleFeatureLabel: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  coupleFeatureDesc: {
+    color: COLORS.subtext,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  coupleFeaturePending: {
+    color: COLORS.subtext,
+    fontSize: 11,
+    marginTop: 10,
+    paddingHorizontal: 16,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
   
   footer: { alignItems: 'center', marginVertical: 40 },
   version: { color: COLORS.subtext, fontSize: 12, fontWeight: 'bold' },
   madeWith: { color: '#444', fontSize: 12, marginTop: 5 },
+  settingItem: {
+    padding: 16,
+    gap: 10,
+  },
+  settingLabel: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  settingInput: {
+    backgroundColor: '#111',
+    color: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  saveMessageBtn: {
+    backgroundColor: COLORS.primary,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  saveMessageBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  helperText: {
+    color: COLORS.subtext,
+    fontSize: 11,
+    lineHeight: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    marginTop: -8,
+  },
 });

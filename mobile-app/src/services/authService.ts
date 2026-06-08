@@ -33,8 +33,23 @@ export const authService = {
   },
 
   /** POST /api/auth/login → { success, token, user } */
-  login: async (data: { email: string; password: string }) => {
+  login: async (data: { email?: string; password?: string; contact?: string }) => {
     const response = await api.post('/auth/login', data);
+    return response.data;
+  },
+
+  sendOtp: async (contact: string) => {
+    const response = await api.post('/auth/send-otp', { contact });
+    return response.data;
+  },
+
+  verifySignup: async (data: { contact?: string; email?: string; otp: string }) => {
+    const response = await api.post('/auth/verify-otp', data);
+    return response.data;
+  },
+
+  updateRelationshipDate: async (data: { relationshipStartDate?: string; anniversaryDate?: string; nextMeetDate?: string; }) => {
+    const response = await api.put('/auth/relationship-date', data);
     return response.data;
   },
 
@@ -78,7 +93,7 @@ export const authService = {
   },
 
   /** POST /api/auth/reset-password → { success, message } - Step 3: Update password */
-  resetPassword: async (data: { email: string; newPassword: string }) => {
+  resetPassword: async (data: { email?: string; newPassword: string; resetToken?: string }) => {
     const response = await api.post('/auth/reset-password', data);
     return response.data;
   },
@@ -99,6 +114,11 @@ export const authService = {
     const profile = response.data;
     await authService.updateStoreWithProfile(profile);
     return profile;
+  },
+
+  resetStatus: async () => {
+    const response = await api.post('/users/reset-status');
+    return response.data;
   },
 
   logout: async () => {

@@ -67,9 +67,9 @@ export default function MeetCountdownCard({ nextMeetDate }: MeetCountdownCardPro
 const styles = StyleSheet.create({
   card: {
     backgroundColor: COLORS.card,
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 20,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
     flexDirection: 'row',
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
   },
   timeRow: {
@@ -91,25 +91,25 @@ const styles = StyleSheet.create({
   },
   timeUnit: {
     alignItems: 'center',
-    minWidth: 45,
+    minWidth: 38,
   },
   timeVal: {
     color: COLORS.secondary,
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   timeLabel: {
     color: COLORS.subtext,
-    fontSize: 9,
+    fontSize: 8,
     textTransform: 'uppercase',
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: 1,
   },
   separator: {
     color: COLORS.border,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginHorizontal: 8,
-    marginTop: -10,
+    marginHorizontal: 6,
+    marginTop: -8,
   },
 });

@@ -1,0 +1,21 @@
+# Tasks
+
+- [/] Research and Planning
+    - [x] Explore project structure
+    - [x] Verify existing components and services
+    - [x] Identify missing backend endpoints
+    - [x] Create implementation plan
+- [ ] Backend Implementation
+    - [ ] Update `Couple` model
+    - [ ] Create `IntimacyController` and routes
+    - [ ] Create `DesireController` and routes
+    - [ ] Update `NotificationController` and routes
+    - [ ] Register new routes in `app.ts`
+    - [ ] Implement socket handlers in `chatSocket.ts`
+- [ ] Mobile App Implementation
+    - [ ] Update `notificationService.ts`
+    - [ ] Update `CoupleHomeScreen.tsx` to fetch complete data
+    - [ ] Verify UI components and fix any issues
+- [ ] Verification
+    - [ ] Manual testing of all features
+    - [ ] Verify real-time updates via sockets

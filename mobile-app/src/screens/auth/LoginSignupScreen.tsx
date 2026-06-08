@@ -28,7 +28,7 @@ export default function LoginSignupScreen({ navigation }: any) {
 
       if (response.userExists) {
         // Direct Login Flow for existing users
-        const loginData = await authService.login(contact.trim());
+        const loginData = await authService.login({ contact: contact.trim() });
         const { token, user } = loginData;
 
         // Update the store and local storage

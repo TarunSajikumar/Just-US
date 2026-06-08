@@ -22,6 +22,7 @@ export default function RelationshipSetupScreen({ navigation }: any) {
   const [myInviteCode, setMyInviteCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const { user, refreshUser } = useAuthStore();
 
   const handleJoin = async () => {
     if (!inviteCode.trim()) {
@@ -30,11 +31,16 @@ export default function RelationshipSetupScreen({ navigation }: any) {
     }
     setIsJoining(true);
     try {
+      // Join invite and refresh user state to sync couple connection
       await inviteService.joinInvite(inviteCode.trim().toUpperCase());
+      
+      // 🔥 CRITICAL FIX: Wait for store to fully refresh before showing alert
+      // This ensures RootNavigator sees the updated relationship_status
+      await refreshUser();
 
       // Verification log
-      const { user } = useAuthStore.getState();
-      console.log('Successfully joined! Updated user:', user);
+      const { user: updatedUser } = useAuthStore.getState();
+      console.log('Successfully joined! Relationship status:', updatedUser?.relationship_status);
 
       Alert.alert(
         'Connected! 💑',
@@ -43,8 +49,7 @@ export default function RelationshipSetupScreen({ navigation }: any) {
           {
             text: 'Continue',
             onPress: () => {
-              // Navigation will happen automatically because of RootNavigator's reactivity
-              // But we can also force it if the user preferred the Quick Fix
+              // Navigation will happen automatically because RootNavigator now sees relationship_status === 'couple'
             },
           },
         ]

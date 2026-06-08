@@ -90,6 +90,11 @@ const userSchema = new mongoose.Schema(
     preferences: {
       language: { type: String, default: 'en' },
       fontSize: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
+      quickLoveNotifications: { type: Boolean, default: true },
+    },
+    quickLoveDefaultMessage: {
+      type: String,
+      default: "I Love You ❤️",
     },
   },
   {

@@ -10,4 +10,9 @@ export const noteService = {
     const response = await api.get("/notes/partner");
     return response.data;
   },
+
+  getAllNotes: async () => {
+    const response = await api.get("/notes");
+    return response.data;
+  },
 };

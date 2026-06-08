@@ -120,11 +120,12 @@ export const getPreferences = async (req: AuthRequest, res: Response) => {
 };
 
 export const updatePreferences = async (req: AuthRequest, res: Response) => {
-  const { language, fontSize } = req.body;
+  const { language, fontSize, quickLoveNotifications } = req.body;
   try {
     const update: any = {};
     if (language) update['preferences.language'] = language;
     if (fontSize) update['preferences.fontSize'] = fontSize;
+    if (quickLoveNotifications !== undefined) update['preferences.quickLoveNotifications'] = quickLoveNotifications;
 
     const user = await User.findByIdAndUpdate(req.userId, { $set: update }, { returnDocument: 'after' });
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -183,5 +184,30 @@ export const resetRelationshipStatus = async (req: AuthRequest, res: Response) =
   } catch (error) {
     console.error("resetRelationshipStatus error:", error);
     res.status(500).json({ message: "Failed to reset relationship status" });
+  }
+};
+
+export const getQuickLoveDefaultMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findById(req.userId).select('quickLoveDefaultMessage');
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json({ defaultMessage: user.quickLoveDefaultMessage || "I Love You ❤️" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to get quick love setting" });
+  }
+};
+
+export const saveQuickLoveDefaultMessage = async (req: AuthRequest, res: Response) => {
+  const { defaultMessage } = req.body;
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { quickLoveDefaultMessage: defaultMessage },
+      { returnDocument: 'after' }
+    );
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json({ success: true, defaultMessage: user.quickLoveDefaultMessage });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to save quick love setting" });
   }
 };

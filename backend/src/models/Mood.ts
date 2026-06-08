@@ -4,6 +4,9 @@ export interface IMood extends Document {
   userId: mongoose.Types.ObjectId;
   coupleId: mongoose.Types.ObjectId;
   mood: string;
+  emoji?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const MoodSchema = new Schema(
@@ -21,7 +24,9 @@ const MoodSchema = new Schema(
     mood: {
       type: String,
       required: true,
-      enum: ["happy", "loved", "sad", "angry", "tired"],
+    },
+    emoji: {
+      type: String,
     },
   },
   {

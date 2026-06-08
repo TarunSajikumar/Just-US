@@ -17,6 +17,7 @@ import SoloTabs from './SoloTabs';
 import CoupleTabs from './CoupleTabs';
 import EditRelationshipDateScreen from '../screens/couple/EditRelationshipDateScreen';
 import AchievementsScreen from '../screens/couple/AchievementsScreen';
+import VaultScreen from '../screens/couple/VaultScreen';
 
 // Store + services
 import { useAuthStore, getAuthData } from '../store/authStore';
@@ -122,6 +123,7 @@ export default function RootNavigator() {
           <Stack.Screen name="CoupleTabs" component={CoupleTabs} />
           <Stack.Screen name="EditRelationshipDate" component={EditRelationshipDateScreen} />
           <Stack.Screen name="Achievements" component={AchievementsScreen} />
+          <Stack.Screen name="Vault" component={VaultScreen} />
         </Stack.Navigator>
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>

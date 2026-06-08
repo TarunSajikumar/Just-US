@@ -9,6 +9,8 @@ import {
   updatePreferences,
   exportUserData,
   resetRelationshipStatus,
+  getQuickLoveDefaultMessage,
+  saveQuickLoveDefaultMessage,
 } from "../controllers/user.controller";
 import { authMiddleware } from "../middleware/auth.middleware";
 
@@ -23,5 +25,7 @@ router.get("/preferences", authMiddleware, getPreferences);
 router.put("/preferences", authMiddleware, updatePreferences);
 router.get("/export", authMiddleware, exportUserData);
 router.post("/reset-status", authMiddleware, resetRelationshipStatus);
+router.get("/settings/quick-love-default", authMiddleware, getQuickLoveDefaultMessage);
+router.post("/settings/quick-love-default", authMiddleware, saveQuickLoveDefaultMessage);
 
 export default router;

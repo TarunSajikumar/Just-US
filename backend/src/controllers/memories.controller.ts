@@ -1,8 +1,10 @@
 import { Response } from "express";
 import User from "../models/User";
 import Memory from "../models/Memory";
+import Activity from "../models/Activity";
 import { unlockAchievement } from "../services/achievement.service";
 import { cloudinary } from "../middleware/uploadMiddleware";
+import { getIO, getCoupleRoomId } from "../sockets";
 
 /**
  * GET /api/memories/:coupleId
@@ -84,6 +86,28 @@ export const createMemory = async (req: any, res: Response) => {
 
     // Unlock FIRST_MEMORY achievement
     await unlockAchievement(coupleId, "FIRST_MEMORY");
+
+    // Log Activity
+    try {
+      await Activity.create({
+        coupleId: coupleId,
+        actorId: userId,
+        actionType: "memory_added",
+        details: { caption: caption?.trim() },
+      });
+    } catch (_) {}
+
+    // Real-time emit to partner
+    try {
+      const io = getIO();
+      if (io && user.partner_id) {
+        const room = getCoupleRoomId(user._id, user.partner_id);
+        io.to(room).emit("memory_added", {
+          memory,
+          actorName: user.name,
+        });
+      }
+    } catch (_) {}
 
     return res.status(201).json({ memory });
   } catch (error: any) {

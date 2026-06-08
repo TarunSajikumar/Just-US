@@ -14,43 +14,90 @@ import { COLORS } from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
 
-const actions = [
-  {
-    icon: 'calendar',
-    label: 'Date',
-    route: 'EditRelationshipDate',
-    color: '#4D96FF',
-  },
-  {
-    icon: 'lock',
-    label: 'Vault',
-    route: 'Vault',
-    color: '#6BCB77',
-  },
-  {
-    icon: 'history',
-    label: 'Memory',
-    route: 'Timeline',
-    color: '#FFD93D',
-  },
-  {
-    icon: 'pencil',
-    label: 'Note',
-    route: 'CreateMemory',
-    color: COLORS.primary,
-  },
-  {
-    icon: 'camera',
-    label: 'Photo',
-    route: 'UploadMemory',
-    color: COLORS.secondary,
-  },
-];
+interface FloatingActionMenuProps {
+  onAddGoal?: () => void;
+  onAddPoll?: () => void;
+  onAddNote?: () => void;
+  onAddEvent?: () => void;
+  additionalActions?: string[];
+  onAddWishlist?: () => void;
+  onAddDateIdea?: () => void;
+}
 
-export default function FloatingActionMenu() {
+export default function FloatingActionMenu({
+  onAddGoal,
+  onAddPoll,
+  onAddNote,
+  onAddEvent,
+  additionalActions = [],
+  onAddWishlist,
+  onAddDateIdea,
+}: FloatingActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const navigation = useNavigation<any>();
   const animation = useRef(new Animated.Value(0)).current;
+
+  // ===== BASE ACTIONS (All Couples) =====
+  const baseActions = [
+    {
+      icon: 'pencil',
+      label: 'Note',
+      onPress: onAddNote,
+      color: '#FF4D8D',
+    },
+    {
+      icon: 'calendar',
+      label: 'Event',
+      onPress: onAddEvent,
+      color: '#9B5DE5',
+    },
+    {
+      icon: 'bullseye',
+      label: 'Goal',
+      onPress: onAddGoal,
+      color: '#FF9F43',
+    },
+    {
+      icon: 'list-ul',
+      label: 'Poll',
+      onPress: onAddPoll,
+      color: '#4D96FF',
+    },
+    {
+      icon: 'lock',
+      label: 'Vault',
+      route: 'Vault',
+      color: '#6BCB77',
+    },
+    {
+      icon: 'camera',
+      label: 'Photo',
+      route: 'Gallery',
+      color: COLORS.secondary,
+    },
+  ];
+
+  // ===== COUPLE+ ACTIONS =====
+  const couple_PlusActions = [
+    {
+      icon: 'heart',
+      label: 'Wishlist',
+      onPress: onAddWishlist,
+      color: '#FF1744',
+    },
+    {
+      icon: 'star',
+      label: 'Date Idea',
+      onPress: onAddDateIdea,
+      color: '#FFD700',
+    },
+  ];
+
+  // ===== COMBINED ACTIONS =====
+  const actions = [
+    ...baseActions,
+    ...(additionalActions?.includes('wishlist') || additionalActions?.includes('dateIdea') ? couple_PlusActions : []),
+  ];
 
   const toggleMenu = () => {
     const toValue = isOpen ? 0 : 1;
@@ -65,9 +112,13 @@ export default function FloatingActionMenu() {
     setIsOpen(!isOpen);
   };
 
-  const handleAction = (route: string) => {
+  const handleAction = (action: any) => {
     toggleMenu();
-    navigation.navigate(route);
+    if (action.onPress) {
+      action.onPress();
+    } else if (action.route) {
+      navigation.navigate(action.route);
+    }
   };
 
   const rotation = animation.interpolate({
@@ -121,9 +172,9 @@ export default function FloatingActionMenu() {
               <Text style={styles.actionLabel}>{action.label}</Text>
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: action.color }]}
-                onPress={() => handleAction(action.route)}
+                onPress={() => handleAction(action)}
               >
-                <FontAwesome name={action.icon as any} size={20} color="#fff" />
+                <FontAwesome name={action.icon as any} size={18} color="#fff" />
               </TouchableOpacity>
             </Animated.View>
           );
@@ -170,8 +221,8 @@ const styles = StyleSheet.create({
     elevation: 10,
     shadowColor: '#ff4f93',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   },
   fab: {
     width: 64,
@@ -188,7 +239,7 @@ const styles = StyleSheet.create({
     width: 200,
     right: 0,
     bottom: 0,
-    paddingBottom: 7, // Center it slightly better with the FAB
+    paddingBottom: 7,
   },
   actionButton: {
     width: 50,
@@ -204,10 +255,10 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     marginRight: 15,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,

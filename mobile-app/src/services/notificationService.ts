@@ -79,6 +79,26 @@ export const notificationService = {
   sendMissYouPing: async (customMessage?: string) => {
     const response = await api.post('/notifications/miss-you', { customMessage });
     return response.data;
+  },
+  sendIntimateQuestion: async (question: string) => {
+    const response = await api.post('/notifications/intimate-question', { question });
+    return response.data;
+  },
+  sendDateIdea: async (idea: string) => {
+    const response = await api.post('/notifications/date-idea', { idea });
+    return response.data;
+  },
+  sendPing: async (customMessage: string) => {
+    const response = await api.post('/notifications/miss-you', { customMessage });
+    return response.data;
+  },
+  sendQuickMessage: async (message: string) => {
+    const response = await api.post('/notifications/miss-you', { customMessage: message });
+    return response.data;
+  },
+  sendQuestionAnswer: async (question: string, answer: string) => {
+    const response = await api.post('/notifications/question-answer', { question, answer });
+    return response.data;
   }
 };
 

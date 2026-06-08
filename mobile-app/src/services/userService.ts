@@ -32,7 +32,7 @@ export const userService = {
   },
 
   /** PUT /api/users/preferences */
-  updatePreferences: async (prefs: { language?: string; fontSize?: string }) => {
+  updatePreferences: async (prefs: { language?: string; fontSize?: string; quickLoveNotifications?: boolean }) => {
     const response = await api.put('/users/preferences', prefs);
     return response.data;
   },

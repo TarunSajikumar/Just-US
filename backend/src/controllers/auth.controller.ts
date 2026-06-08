@@ -273,7 +273,7 @@ export const verifyResetOtp = async (req: Request, res: Response) => {
     const normalizedEmail = email.toLowerCase().trim();
 
     const otpRecord = await Otp.findOne({ contact: normalizedEmail });
-    if (!otpRecord || otpRecord.code !== otp || otpRecord.expiresAt < new Date()) {
+    if (!otpRecord || otpRecord.code !== otp || !otpRecord.expiresAt || otpRecord.expiresAt < new Date()) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 

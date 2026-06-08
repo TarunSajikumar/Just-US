@@ -1,6 +1,8 @@
 import { Response } from "express";
 import User from "../models/User";
 import TimelineEvent from "../models/TimelineEvent";
+import Activity from "../models/Activity";
+import { getIO } from "../sockets";
 
 /**
  * GET /api/timeline/:coupleId
@@ -61,6 +63,27 @@ export const createTimelineEvent = async (req: any, res: Response) => {
       type: type || "custom",
     });
 
+    // Log Activity
+    try {
+      await Activity.create({
+        coupleId: coupleId,
+        actorId: userId,
+        actionType: "timeline_added",
+        details: { title },
+      });
+    } catch (_) {}
+
+    // Real-time emit to partner
+    try {
+      const io = getIO();
+      if (io && user.partner_id) {
+        io.to(user.partner_id.toString()).emit("timeline_added", {
+          event,
+          actorName: user.name,
+        });
+      }
+    } catch (_) {}
+
     return res.status(201).json({ event });
   } catch (error) {
     console.error("createTimelineEvent error:", error);
@@ -82,7 +105,7 @@ export const deleteTimelineEvent = async (req: any, res: Response) => {
     }
 
     // Verify user belongs to the couple of this event
-    const user = await User.findOne({ _id: userId, couple_id: event.couple_id });
+    const user = await User.findOne({ _id: userId, couple_id: event.couple_id.toString() });
     if (!user) {
       return res.status(403).json({ message: "Not authorized to delete this event" });
     }
