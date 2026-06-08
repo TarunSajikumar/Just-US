@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 interface GoalsCardProps {
   goals: Goal[];
-  onUpdateProgress: (goalId: string) => void;
+  onUpdateProgress: (goalId: string, increment?: number) => void;
   onAddGoal: () => void;
 }
 
@@ -22,8 +22,8 @@ const GoalsCard: React.FC<GoalsCardProps> = ({ goals, onUpdateProgress, onAddGoa
           <View style={styles.iconCircle}>
             <FontAwesome name="compass" size={32} color={COLORS.primary} />
           </View>
-          <Text style={styles.emptyTitle}>Couple Bucket List</Text>
-          <Text style={styles.emptyText}>Create a list of future plans, dreams, and adventures you want to do together!</Text>
+          <Text style={styles.emptyTitle}>Our Future Wishes</Text>
+          <Text style={styles.emptyText}>Add things you wish to do together in the future!</Text>
           <TouchableOpacity style={styles.gradientBtn} onPress={onAddGoal}>
             <LinearGradient
               colors={[COLORS.primary, '#C23576']}
@@ -32,7 +32,7 @@ const GoalsCard: React.FC<GoalsCardProps> = ({ goals, onUpdateProgress, onAddGoa
               end={{ x: 1, y: 1 }}
             >
               <FontAwesome name="plus" size={14} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.btnText}>Add First Future Goal</Text>
+              <Text style={styles.btnText}>Add First Wish</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -40,110 +40,67 @@ const GoalsCard: React.FC<GoalsCardProps> = ({ goals, onUpdateProgress, onAddGoa
     );
   }
 
+  const handleCompleteGoal = (goal: Goal) => {
+    // If it's an old goal with a target > 1, send the required increment to complete it instantly
+    const requiredIncrement = goal.target - goal.current;
+    onUpdateProgress(goal._id, Math.max(1, requiredIncrement));
+  };
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.activeTitle}>💫 Our Bucket List & Goals</Text>
+        <Text style={styles.activeTitle}>💫 What We Wish to Do</Text>
         <TouchableOpacity style={styles.addChallengeLink} onPress={onAddGoal}>
           <FontAwesome name="plus-circle" size={14} color={COLORS.primary} style={{ marginRight: 4 }} />
-          <Text style={styles.addLinkText}>Add Goal</Text>
+          <Text style={styles.addLinkText}>Add Wish</Text>
         </TouchableOpacity>
       </View>
 
       {activeGoals.length === 0 ? (
         <View style={styles.emptyActiveContainer}>
-          <Text style={styles.emptyActiveText}>All current plans accomplished! Time to add more 🌍</Text>
+          <Text style={styles.emptyActiveText}>All wishes fulfilled! What should we do next? 🌍</Text>
         </View>
       ) : (
-        activeGoals.map((goal) => {
-          const isBucketListItem = goal.target === 1;
-
-          if (isBucketListItem) {
-            return (
-              <View key={goal._id} style={styles.goalItem}>
-                <View style={styles.bucketRow}>
-                  <View style={styles.leftContainer}>
-                    <View style={styles.emojiContainer}>
-                      <Text style={styles.goalEmoji}>{goal.emoji || '✨'}</Text>
-                    </View>
-                    <View style={styles.textContainer}>
-                      <Text style={styles.goalTitle} numberOfLines={2}>
-                        {goal.title}
-                      </Text>
-                      <Text style={styles.badgeTextLabel}>Future Goal 📌</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.checkButton}
-                    onPress={() => onUpdateProgress(goal._id)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="ellipse-outline" size={24} color={COLORS.subtext} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          }
-
-          const progress = Math.min((goal.current / goal.target) * 100, 100);
-          const progressColor =
-            progress >= 80 ? '#FFD700' : progress >= 50 ? '#FF9F43' : COLORS.primary;
-
-          return (
-            <View key={goal._id} style={styles.goalItem}>
-              <View style={styles.goalHeader}>
+        activeGoals.map((goal) => (
+          <View key={goal._id} style={styles.goalItem}>
+            <View style={styles.bucketRow}>
+              <View style={styles.leftContainer}>
                 <View style={styles.emojiContainer}>
-                  <Text style={styles.goalEmoji}>{goal.emoji || '🎯'}</Text>
+                  <Text style={styles.goalEmoji}>{goal.emoji || '✨'}</Text>
                 </View>
-                <View style={styles.goalTitleContainer}>
-                  <Text style={styles.goalTitle} numberOfLines={1}>{goal.title}</Text>
-                  <Text style={styles.goalProgressLabel}>
-                    Progress: <Text style={[styles.progressBold, { color: progressColor }]}>{goal.current}</Text> / {goal.target}
+                <View style={styles.textContainer}>
+                  <Text style={styles.goalTitle} numberOfLines={2}>
+                    {goal.title}
                   </Text>
+                  <Text style={styles.badgeTextLabel}>Wish List Item ⏳</Text>
                 </View>
               </View>
-              
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBarBg}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      { width: `${progress}%`, backgroundColor: progressColor },
-                    ]}
-                  />
-                </View>
-                <TouchableOpacity
-                  style={[styles.plusButton, { shadowColor: progressColor }]}
-                  onPress={() => onUpdateProgress(goal._id)}
-                  activeOpacity={0.7}
-                >
-                  <LinearGradient
-                    colors={[progressColor, `${progressColor}CC`]}
-                    style={styles.plusButtonGradient}
-                  >
-                    <Text style={styles.plusButtonText}>+1</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.checkButton}
+                onPress={() => handleCompleteGoal(goal)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="ellipse-outline" size={24} color={COLORS.subtext} />
+              </TouchableOpacity>
             </View>
-          );
-        })
+          </View>
+        ))
       )}
 
       {completedGoals.length > 0 && (
         <View style={styles.completedSection}>
           <Text style={styles.completedLabel}>🏆 Completed Plans & Adventures</Text>
-          {completedGoals.slice(0, 3).map((goal) => (
+          {completedGoals.slice(0, 4).map((goal) => (
             <View key={goal._id} style={styles.completedItem}>
               <View style={styles.completedEmojiContainer}>
                 <Text style={styles.completedEmoji}>{goal.emoji || '✨'}</Text>
               </View>
-              <Text style={styles.completedTitle} numberOfLines={1}>
+              <Text style={styles.completedTitle} numberOfLines={2}>
                 {goal.title}
               </Text>
               <View style={styles.completedBadge}>
                 <FontAwesome name="check-circle" size={12} color="#2ECC71" />
-                <Text style={styles.completedBadgeText}>Done</Text>
+                <Text style={styles.completedBadgeText}>Completed</Text>
               </View>
             </View>
           ))}
@@ -302,53 +259,6 @@ const styles = StyleSheet.create({
   checkButton: {
     padding: 4,
   },
-  goalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  goalTitleContainer: {
-    flex: 1,
-  },
-  goalProgressLabel: {
-    color: COLORS.subtext,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  progressBold: {
-    fontWeight: 'bold',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  progressBarBg: {
-    flex: 1,
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  plusButton: {
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  plusButtonGradient: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  plusButtonText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
   completedSection: {
     marginTop: 8,
     paddingTop: 12,
@@ -370,7 +280,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 8,
     borderWidth: 1,
-    borderColor: 'rgba(46,204,113,0.06)',
+    borderColor: 'rgba(46, 204, 113, 0.06)',
   },
   completedEmojiContainer: {
     width: 28,
@@ -388,6 +298,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     fontSize: 12.5,
     flex: 1,
+    lineHeight: 18,
     textDecorationLine: 'line-through',
   },
   completedBadge: {

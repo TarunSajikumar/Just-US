@@ -679,9 +679,9 @@ export default function CoupleHomeScreen({ navigation }: any) {
     }
   }, [goalTitle, goalTarget, goalEmoji, fetchDashboardData, user]);
 
-  const handleUpdateGoalProgress = useCallback(async (goalId: string) => {
+  const handleUpdateGoalProgress = useCallback(async (goalId: string, increment: number = 1) => {
     try {
-      await goalService.updateProgress(goalId, 1);
+      await goalService.updateProgress(goalId, increment);
       fetchDashboardData();
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Failed to update progress' });
@@ -1363,16 +1363,8 @@ export default function CoupleHomeScreen({ navigation }: any) {
               style={[styles.modalInput, { height: 50 }]}
               value={goalTitle}
               onChangeText={setGoalTitle}
-              placeholder="e.g., Go on a bike ride 🚲"
+              placeholder="e.g., Save ₹50,000 For Goa Trip ✈️"
               placeholderTextColor="#555"
-            />
-            <TextInput
-              style={[styles.modalInput, { height: 50 }]}
-              value={goalTarget}
-              onChangeText={setGoalTarget}
-              placeholder="Target Count (optional, default: 1)"
-              placeholderTextColor="#555"
-              keyboardType="numeric"
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setGoalModalVisible(false)}>
