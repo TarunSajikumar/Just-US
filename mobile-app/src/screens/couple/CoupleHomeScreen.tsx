@@ -1359,6 +1359,30 @@ export default function CoupleHomeScreen({ navigation }: any) {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 10 }}>
+              <Text style={[styles.inputLabel, { marginBottom: 0 }]}>Or enter custom emoji:</Text>
+              <TextInput
+                style={{
+                  backgroundColor: '#111',
+                  color: '#fff',
+                  borderRadius: 12,
+                  width: 44,
+                  height: 44,
+                  fontSize: 18,
+                  textAlign: 'center',
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
+                }}
+                value={['🎯', '🏃', '🍕', '🎬', '🌍', '📚', '❤️', '🎮', '🎨', '✈️', '🏋️', '💪'].includes(goalEmoji) ? '' : goalEmoji}
+                onChangeText={(text) => {
+                  const emoji = text.trim();
+                  setGoalEmoji(emoji || '🎯');
+                }}
+                maxLength={2}
+                placeholder="➕"
+                placeholderTextColor="#666"
+              />
+            </View>
             <TextInput
               style={[styles.modalInput, { height: 50 }]}
               value={goalTitle}
@@ -1453,6 +1477,30 @@ export default function CoupleHomeScreen({ navigation }: any) {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 10 }}>
+              <Text style={[styles.inputLabel, { marginBottom: 0 }]}>Or enter custom emoji:</Text>
+              <TextInput
+                style={{
+                  backgroundColor: '#111',
+                  color: '#fff',
+                  borderRadius: 12,
+                  width: 44,
+                  height: 44,
+                  fontSize: 18,
+                  textAlign: 'center',
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
+                }}
+                value={['📅', '💑', '✈️', '🎂', '🌹', '🏖️', '🎉', '🍽️', '🎭', '💍'].includes(eventEmoji) ? '' : eventEmoji}
+                onChangeText={(text) => {
+                  const emoji = text.trim();
+                  setEventEmoji(emoji || '📅');
+                }}
+                maxLength={2}
+                placeholder="➕"
+                placeholderTextColor="#666"
+              />
+            </View>
             <TextInput
               style={[styles.modalInput, { height: 50 }]}
               value={eventTitle}
