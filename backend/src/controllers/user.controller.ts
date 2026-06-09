@@ -1,6 +1,7 @@
 import { Response } from "express";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { getIO } from "../sockets";
 
 export const updatePartnerNickname = async (req: AuthRequest, res: Response) => {
   const { nickname } = req.body;
@@ -98,9 +99,18 @@ export const getPartnerStatus = async (req: AuthRequest, res: Response) => {
 
     const partner = await User.findById(user.partner_id);
 
+    const io = getIO();
+    let isOnline = false;
+    if (io && partner) {
+      const partnerRoom = io.sockets.adapter.rooms.get(partner._id.toString());
+      isOnline = partnerRoom ? partnerRoom.size > 0 : (partner.isOnline || false);
+    } else if (partner) {
+      isOnline = partner.isOnline || false;
+    }
+
     return res.json({
       name: partner?.name || "Partner",
-      isOnline: partner?.isOnline || false,
+      isOnline,
       lastSeen: partner?.lastSeen || null,
     });
   } catch (error) {

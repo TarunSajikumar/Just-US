@@ -23,6 +23,7 @@ export const setupSockets = (io: Server) => {
     console.log("Socket connected — userId:", userId ?? "(guest)");
 
     if (userId) {
+      socket.join(userId);
       User.findByIdAndUpdate(userId, { isOnline: true }).catch((err) =>
         console.error("Error setting isOnline on connect:", err)
       );
@@ -160,21 +161,44 @@ export const setupSockets = (io: Server) => {
       });
     });
 
+    // ── Quick love sent ───────────────────────────────────
+    socket.on("quick_love_sent", async (data: { message: string }) => {
+      if (!userId) return;
+      try {
+        const currentUser = await User.findById(userId);
+        if (currentUser && currentUser.partner_id) {
+          const room = roomId(userId, currentUser.partner_id.toString());
+          socket.to(room).emit("quick_love_received", {
+            message: data.message,
+          });
+        }
+      } catch (error) {
+        console.error("Error handling quick_love_sent socket event:", error);
+      }
+    });
+
     // ── Disconnect ────────────────────────────────────────
     socket.on("disconnect", () => {
       console.log("Socket disconnected — userId:", userId ?? "(guest)");
       if (userId) {
-        const lastSeen = new Date();
-        User.findByIdAndUpdate(userId, {
-          isOnline: false,
-          lastSeen,
-        }).catch((err) => console.error("Error setting offline on disconnect:", err));
+        const userRoom = io.sockets.adapter.rooms.get(userId);
+        const stillConnected = userRoom ? userRoom.size > 0 : false;
 
-        socket.broadcast.emit("user_status_change", {
-          userId,
-          status: "offline",
-          lastSeen,
-        });
+        if (!stillConnected) {
+          const lastSeen = new Date();
+          User.findByIdAndUpdate(userId, {
+            isOnline: false,
+            lastSeen,
+          }).catch((err) => console.error("Error setting offline on disconnect:", err));
+
+          socket.broadcast.emit("user_status_change", {
+            userId,
+            status: "offline",
+            lastSeen,
+          });
+        } else {
+          console.log(`User ${userId} still has active connection(s) (remaining sockets: ${userRoom?.size}).`);
+        }
       }
     });
   });
