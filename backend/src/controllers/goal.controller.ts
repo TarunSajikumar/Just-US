@@ -157,6 +157,19 @@ export const deleteGoal = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: "Not your goal" });
 
     await goal.deleteOne();
+
+    // Real-time sync
+    try {
+      const io = getIO();
+      if (io && user?.partner_id) {
+        const room = getCoupleRoomId(user._id, user.partner_id);
+        io.to(room).emit("goal_deleted", {
+          goalId: req.params.id,
+          actorName: user.name,
+        });
+      }
+    } catch (_) {}
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: "Failed to delete goal" });

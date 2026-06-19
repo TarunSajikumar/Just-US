@@ -112,3 +112,33 @@ export const votePoll = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Failed to vote" });
   }
 };
+
+// DELETE /api/polls/:id
+export const deletePoll = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findById(req.userId);
+    const poll = await Poll.findById(req.params.id);
+
+    if (!poll) return res.status(404).json({ message: "Poll not found" });
+    if (String(poll.coupleId) !== String(user?.couple_id))
+      return res.status(403).json({ message: "Not your poll" });
+
+    await poll.deleteOne();
+
+    // Real-time sync
+    try {
+      const io = getIO();
+      if (io && user?.partner_id) {
+        const room = getCoupleRoomId(user._id, user.partner_id);
+        io.to(room).emit("poll_deleted", {
+          pollId: req.params.id,
+          actorName: user.name,
+        });
+      }
+    } catch (_) {}
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to delete poll" });
+  }
+};

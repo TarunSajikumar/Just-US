@@ -15,6 +15,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -48,8 +49,54 @@ import GoalsCard from '../../components/home/GoalsCard';
 import PollsCard from '../../components/home/PollsCard';
 import ActivityFeedCard from '../../components/home/ActivityFeedCard';
 import UpcomingEventsCard from '../../components/home/UpcomingEventsCard';
+import AnimatedContourBackground from '../../components/AnimatedContourBackground';
+import VideoBackground from '../../components/VideoBackground';
+import Svg, {
+  Defs as SvgDefs,
+  LinearGradient as SvgLinearGradient,
+  Stop as SvgStop,
+  Path as SvgPath,
+  Circle as SvgCircle,
+} from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Position illustration using abstract outline SVGs
+const PositionIllustration = ({ id }: { id: string }) => {
+  return (
+    <View style={styles.illustrationContainer}>
+      <Svg width={80} height={80} viewBox="0 0 100 100">
+        <SvgDefs>
+          <SvgLinearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <SvgStop offset="0%" stopColor={COLORS.primary} stopOpacity={0.8} />
+            <SvgStop offset="100%" stopColor="#C23576" stopOpacity={0.2} />
+          </SvgLinearGradient>
+          <SvgLinearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <SvgStop offset="0%" stopColor={COLORS.secondary} stopOpacity={0.8} />
+            <SvgStop offset="100%" stopColor="#8B1A5C" stopOpacity={0.2} />
+          </SvgLinearGradient>
+        </SvgDefs>
+        <SvgCircle cx={40} cy={50} r={20} stroke="url(#gradient1)" strokeWidth={2} fill="none" opacity={0.7} />
+        <SvgCircle cx={60} cy={50} r={20} stroke="url(#gradient2)" strokeWidth={2} fill="none" opacity={0.7} />
+        <SvgPath
+          d="M 25,50 C 40,30 60,70 75,50"
+          stroke="url(#gradient1)"
+          strokeWidth={3}
+          fill="none"
+          strokeLinecap="round"
+        />
+        <SvgPath
+          d="M 30,45 C 50,65 50,25 70,45"
+          stroke="url(#gradient2)"
+          strokeWidth={2}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray="4 2"
+        />
+      </Svg>
+    </View>
+  );
+};
 
 // =============== TYPE DEFINITIONS ===============
 
@@ -364,6 +411,24 @@ export default function CoupleHomeScreen({ navigation }: any) {
   const ring2Scale = useSharedValue(1);
   const ring2Opacity = useSharedValue(0.2);
 
+  // Moving Background Glows using Reanimated
+  const bgAnim1 = useSharedValue(0);
+  const bgAnim2 = useSharedValue(0);
+
+  const blob1Style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: bgAnim1.value * 60 - 30 },
+      { translateY: bgAnim1.value * 60 - 30 },
+    ],
+  }));
+
+  const blob2Style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: bgAnim2.value * -60 + 30 },
+      { translateY: bgAnim2.value * 60 - 30 },
+    ],
+  }));
+
   useEffect(() => {
     heartScale.value = withRepeat(
       withSequence(
@@ -397,6 +462,24 @@ export default function CoupleHomeScreen({ navigation }: any) {
         false
       );
     }, 800);
+
+    bgAnim1.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 12000 }),
+        withTiming(0, { duration: 12000 })
+      ),
+      -1,
+      true
+    );
+
+    bgAnim2.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 16000 }),
+        withTiming(0, { duration: 16000 })
+      ),
+      -1,
+      true
+    );
 
     return () => clearTimeout(timer);
   }, []);
@@ -476,6 +559,43 @@ export default function CoupleHomeScreen({ navigation }: any) {
   const [isSavingEvent, setIsSavingEvent] = useState(false);
   const [isSavingMood, setIsSavingMood] = useState(false);
   const [isAddingCustomMessage, setIsAddingCustomMessage] = useState(false);
+
+  // ===== COUPLE+ STATES =====
+  const [coupleFeatureStatus, setCoupleFeatureStatus] = useState<'pending' | 'active' | 'declined' | null>(null);
+  const [coupleStatusFromPartner, setCoupleStatusFromPartner] = useState<'pending' | 'active' | 'declined' | null>(null);
+  const [coupleStatusFromMe, setCoupleStatusFromMe] = useState<'pending' | 'active' | 'declined' | null>(null);
+  const [connectionLevel, setConnectionLevel] = useState(75);
+  const [isUpdatingConnectionLevel, setIsUpdatingConnectionLevel] = useState(false);
+
+  // Questions
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [isQuestionModalVisible, setQuestionModalVisible] = useState(false);
+  const [questionInput, setQuestionInput] = useState('');
+  const [isSavingQuestion, setIsSavingQuestion] = useState(false);
+  
+  const [isAnswerModalVisible, setAnswerModalVisible] = useState(false);
+  const [selectedQuestionForAnswer, setSelectedQuestionForAnswer] = useState<any>(null);
+  const [answerInput, setAnswerInput] = useState('');
+  const [isSavingAnswer, setIsSavingAnswer] = useState(false);
+
+  // Wishlist
+  const [wishlist, setWishlist] = useState<any[]>([]);
+  const [isWishlistModalVisible, setWishlistModalVisible] = useState(false);
+  const [wishlistTitle, setWishlistTitle] = useState('');
+  const [wishlistNotes, setWishlistNotes] = useState('');
+  const [isSavingWishlist, setIsSavingWishlist] = useState(false);
+
+  // Positions
+  const [positions, setPositions] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('Romantic');
+  const [isPositionNotesModalVisible, setPositionNotesModalVisible] = useState(false);
+  const [selectedPositionForNotes, setSelectedPositionForNotes] = useState<any>(null);
+  const [positionNotesInput, setPositionNotesInput] = useState('');
+  const [isSavingPositionNotes, setIsSavingPositionNotes] = useState(false);
+
+  // Ideas & Challenges
+  const [ideas, setIdeas] = useState<any[]>([]);
+  const [challenges, setChallenges] = useState<any[]>([]);
 
   // Animation
   const daysAnimated = useRef(new RNAnimated.Value(0)).current;
@@ -584,12 +704,96 @@ export default function CoupleHomeScreen({ navigation }: any) {
     }
   }, [customMessageInput, customMessageEmoji]);
 
+  const fetchCoupleSettings = useCallback(async () => {
+    try {
+      const res = await api.get('/couple/settings');
+      if (res?.data) {
+        setCoupleFeatureStatus(res.data.coupleFeatureStatus);
+        setCoupleStatusFromPartner(res.data.coupleStatusFromPartner);
+        setCoupleStatusFromMe(res.data.coupleStatusFromMe);
+        return res.data.coupleFeatureStatus;
+      }
+    } catch (e) {
+      console.log('Failed to fetch couple settings', e);
+    }
+    return null;
+  }, []);
+
+  const fetchConnectionLevel = useCallback(async () => {
+    try {
+      const res = await api.get('/couple/connection-level');
+      if (res?.data) {
+        setConnectionLevel(res.data.level);
+      }
+    } catch (e) {}
+  }, []);
+
+  const fetchQuestions = useCallback(async () => {
+    try {
+      const res = await api.get('/couple/questions');
+      if (res?.data) {
+        setQuestions(res.data);
+      }
+    } catch (e) {}
+  }, []);
+
+  const fetchWishlist = useCallback(async () => {
+    try {
+      const res = await api.get('/couple/wishlist');
+      if (res?.data) {
+        setWishlist(res.data);
+      }
+    } catch (e) {}
+  }, []);
+
+  const fetchPositions = useCallback(async () => {
+    try {
+      const res = await api.get('/couple/positions');
+      if (res?.data) {
+        setPositions(res.data);
+      }
+    } catch (e) {}
+  }, []);
+
+  const fetchIdeas = useCallback(async () => {
+    try {
+      const res = await api.get('/couple/ideas');
+      if (res?.data) {
+        setIdeas(res.data);
+      }
+    } catch (e) {}
+  }, []);
+
+  const fetchChallenges = useCallback(async () => {
+    try {
+      const res = await api.get('/couple/challenges');
+      if (res?.data) {
+        setChallenges(res.data);
+      }
+    } catch (e) {}
+  }, []);
+
   const fetchDashboardData = useCallback(async () => {
     if (!partner) return;
 
     try {
+      const status = await fetchCoupleSettings();
+      if (status === 'active') {
+        Promise.all([
+          fetchConnectionLevel(),
+          fetchQuestions(),
+          fetchWishlist(),
+          fetchPositions(),
+          fetchIdeas(),
+          fetchChallenges(),
+        ]).catch(() => {});
+      }
+
+      const safeAllSettled = (promises: Promise<any>[]) => 
+        Promise.all(promises.map(p => p.then(value => ({ status: 'fulfilled', value })).catch(reason => ({ status: 'rejected', reason }))));
+
       const [statusRes, myMoodRes, partnerMoodRes, noteRes, achRes, goalRes, pollRes, activityRes, eventRes, quickMessagesRes] =
-        await Promise.allSettled([
+        await safeAllSettled([
           api.get('/users/partner-status'),
           moodService.getMyMood(),
           moodService.getPartnerMood(),
@@ -614,7 +818,8 @@ export default function CoupleHomeScreen({ navigation }: any) {
       if (activityRes.status === 'fulfilled') setActivities(activityRes.value || []);
       if (eventRes.status === 'fulfilled') setEvents(eventRes.value || []);
       if (quickMessagesRes.status === 'fulfilled' && quickMessagesRes.value?.data) {
-        setCustomQuickMessages(quickMessagesRes.value.data);
+        const data = quickMessagesRes.value.data;
+        setCustomQuickMessages(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('Error loading dashboard:', err);
@@ -638,6 +843,201 @@ export default function CoupleHomeScreen({ navigation }: any) {
       setRefreshing(false);
     }
   }, [fetchDashboardData]);
+
+  // ===== COUPLE+ INTERACTIONS =====
+
+  const handleAcceptRequest = async () => {
+    try {
+      await api.post('/couple/accept-feature');
+      Toast.show({ type: 'success', text1: 'Couple+ Enabled! 🎉' });
+      fetchDashboardData();
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to accept Couple+' });
+    }
+  };
+
+  const handleDeclineRequest = async () => {
+    try {
+      await api.post('/couple/decline-feature');
+      Toast.show({ type: 'info', text1: 'Request Declined' });
+      fetchDashboardData();
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to decline Couple+' });
+    }
+  };
+
+  const handleUpdateConnectionLevel = async (level: number) => {
+    if (isUpdatingConnectionLevel) return;
+    setIsUpdatingConnectionLevel(true);
+    try {
+      const res = await api.post('/couple/connection-level', { level });
+      if (res.data?.success) {
+        setConnectionLevel(level);
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to update connection meter' });
+    } finally {
+      setIsUpdatingConnectionLevel(false);
+    }
+  };
+
+  const handleSaveQuestion = async () => {
+    if (!questionInput.trim()) return;
+    setIsSavingQuestion(true);
+    try {
+      const res = await api.post('/couple/questions/send', { question: questionInput.trim() });
+      if (res.data?.success) {
+        setQuestions(prev => [res.data.question, ...prev]);
+        setQuestionInput('');
+        setQuestionModalVisible(false);
+        Toast.show({ type: 'success', text1: 'Question Sent! 💭' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to send question' });
+    } finally {
+      setIsSavingQuestion(false);
+    }
+  };
+
+  const handleSaveAnswer = async () => {
+    if (!answerInput.trim() || !selectedQuestionForAnswer) return;
+    setIsSavingAnswer(true);
+    try {
+      const res = await api.post('/couple/questions/answer', {
+        questionId: selectedQuestionForAnswer._id,
+        answer: answerInput.trim()
+      });
+      if (res.data?.success) {
+        setQuestions(prev => prev.map(q => q._id === selectedQuestionForAnswer._id ? res.data.question : q));
+        setAnswerInput('');
+        setSelectedQuestionForAnswer(null);
+        setAnswerModalVisible(false);
+        Toast.show({ type: 'success', text1: 'Answer Sent! 💌' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to submit answer' });
+    } finally {
+      setIsSavingAnswer(false);
+    }
+  };
+
+  const handleSaveWishlist = async () => {
+    if (!wishlistTitle.trim()) return;
+    setIsSavingWishlist(true);
+    try {
+      const res = await api.post('/couple/wishlist', {
+        title: wishlistTitle.trim(),
+        notes: wishlistNotes.trim()
+      });
+      if (res.data) {
+        setWishlist(prev => [res.data, ...prev]);
+        setWishlistTitle('');
+        setWishlistNotes('');
+        setWishlistModalVisible(false);
+        Toast.show({ type: 'success', text1: 'Item Added to Wishlist! 🎁' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to add wishlist item' });
+    } finally {
+      setIsSavingWishlist(false);
+    }
+  };
+
+  const handleToggleWishlist = async (id: string, currentStatus: boolean) => {
+    try {
+      const res = await api.put(`/couple/wishlist/${id}`, { isCompleted: !currentStatus });
+      if (res.data) {
+        setWishlist(prev => prev.map(w => w._id === id ? res.data : w));
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to update item' });
+    }
+  };
+
+  const handleDeleteWishlist = async (id: string) => {
+    try {
+      const res = await api.delete(`/couple/wishlist/${id}`);
+      if (res.data?.success) {
+        setWishlist(prev => prev.filter(w => w._id !== id));
+        Toast.show({ type: 'success', text1: 'Item Removed' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to delete item' });
+    }
+  };
+
+  const handleTogglePositionStatus = async (positionId: string, action: 'favorite' | 'wantToTry' | 'tried', currentValue: boolean) => {
+    try {
+      const res = await api.post(`/couple/positions/${positionId}/status`, {
+        action,
+        value: !currentValue
+      });
+      if (res.data?.success) {
+        setPositions(prev => prev.map(p => p.id === positionId ? {
+          ...p,
+          favorites: res.data.doc.favorites,
+          wantToTry: res.data.doc.wantToTry,
+          tried: res.data.doc.tried
+        } : p));
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to update position' });
+    }
+  };
+
+  const handleSavePositionNotes = async () => {
+    if (!selectedPositionForNotes) return;
+    setIsSavingPositionNotes(true);
+    try {
+      const res = await api.post(`/couple/positions/${selectedPositionForNotes.id}/status`, {
+        action: 'notes',
+        notes: positionNotesInput.trim()
+      });
+      if (res.data?.success) {
+        setPositions(prev => prev.map(p => p.id === selectedPositionForNotes.id ? {
+          ...p,
+          notes: res.data.doc.notes
+        } : p));
+        setPositionNotesInput('');
+        setSelectedPositionForNotes(null);
+        setPositionNotesModalVisible(false);
+        Toast.show({ type: 'success', text1: 'Notes Saved!' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to save notes' });
+    } finally {
+      setIsSavingPositionNotes(false);
+    }
+  };
+
+  const handleToggleIdeaLike = async (ideaId: string) => {
+    try {
+      const res = await api.post(`/couple/ideas/${ideaId}/like`);
+      if (res.data) {
+        setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, likes: res.data.likes } : i));
+      }
+    } catch (e) {}
+  };
+
+  const handleToggleIdeaComplete = async (ideaId: string, currentStatus: boolean) => {
+    try {
+      const res = await api.post(`/couple/ideas/${ideaId}/complete`, { isCompleted: !currentStatus });
+      if (res.data) {
+        setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, isCompleted: res.data.isCompleted } : i));
+        Toast.show({ type: 'success', text1: !currentStatus ? 'Date Idea Completed! 🎉' : 'Date Idea Reset' });
+      }
+    } catch (e) {}
+  };
+
+  const handleToggleChallengeComplete = async (challengeId: string, currentStatus: boolean) => {
+    try {
+      const res = await api.post(`/couple/challenges/${challengeId}/complete`, { isCompleted: !currentStatus });
+      if (res.data) {
+        setChallenges(prev => prev.map(c => c.id === challengeId ? { ...c, isCompleted: res.data.isCompleted } : c));
+        Toast.show({ type: 'success', text1: !currentStatus ? 'Challenge Completed! 🔥' : 'Challenge Reset' });
+      }
+    } catch (e) {}
+  };
 
   const handleSaveNote = useCallback(async () => {
     const trimmedNote = noteInput.trim();
@@ -757,6 +1157,16 @@ export default function CoupleHomeScreen({ navigation }: any) {
     }
   }, [fetchDashboardData]);
 
+  const handleDeleteGoal = useCallback(async (goalId: string) => {
+    try {
+      await goalService.deleteGoal(goalId);
+      Toast.show({ type: 'success', text1: 'Goal Removed! 🗑️' });
+      fetchDashboardData();
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to remove goal' });
+    }
+  }, [fetchDashboardData]);
+
   const handleSavePoll = useCallback(async () => {
     const filteredOptions = pollOptions.filter((o) => o.trim());
     if (!pollQuestion.trim() || filteredOptions.length < 2) {
@@ -792,6 +1202,16 @@ export default function CoupleHomeScreen({ navigation }: any) {
       fetchDashboardData();
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Failed to vote' });
+    }
+  }, [fetchDashboardData]);
+
+  const handleDeletePoll = useCallback(async (pollId: string) => {
+    try {
+      await pollService.deletePoll(pollId);
+      Toast.show({ type: 'success', text1: 'Poll Removed! 🗑️' });
+      fetchDashboardData();
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to remove poll' });
     }
   }, [fetchDashboardData]);
 
@@ -839,20 +1259,34 @@ export default function CoupleHomeScreen({ navigation }: any) {
   // Socket + Initial Fetch
   useEffect(() => {
     let isMounted = true;
+    let socket: any = null;
 
     const setupDashboard = async () => {
-      loadDefaultQuickMessage();
+      await loadDefaultQuickMessage();
       await fetchDashboardData();
 
-      let socket = socketService.getSocket();
-      if (!socket) {
+      socket = socketService.getSocket();
+      if (!socket || !socket.connected) {
         socket = await socketService.connect();
       }
 
       if (socket) {
         setConnectionStatus(socket.connected ? 'connected' : 'connecting');
-        socket.on('connect', () => setConnectionStatus('connected'));
-        socket.on('disconnect', () => setConnectionStatus('disconnected'));
+
+        const onConnect = () => {
+          if (isMounted) setConnectionStatus('connected');
+        };
+
+        const onDisconnect = () => {
+          if (isMounted) setConnectionStatus('disconnected');
+        };
+
+        // Use named functions for cleanup
+        socket.on('connect', onConnect);
+        socket.on('disconnect', onDisconnect);
+
+        // Store listeners for cleanup
+        (socket as any)._homeScreenHandlers = { onConnect, onDisconnect };
       }
 
       if (user?._id) {
@@ -895,6 +1329,13 @@ export default function CoupleHomeScreen({ navigation }: any) {
         }
       });
 
+      socket?.on('goal_deleted', (data: any) => {
+        if (isMounted) {
+          Toast.show({ type: 'info', text1: 'Goal Removed 🗑️', text2: data?.actorName ? `${data.actorName} removed a goal` : 'Partner removed a goal' });
+          fetchDashboardData();
+        }
+      });
+
       socket?.on('poll_created', () => {
         if (isMounted) {
           Toast.show({ type: 'info', text1: 'New Poll! 🗳️', text2: 'Your partner started a poll' });
@@ -903,6 +1344,13 @@ export default function CoupleHomeScreen({ navigation }: any) {
       });
 
       socket?.on('poll_voted', () => { if (isMounted) fetchDashboardData(); });
+
+      socket?.on('poll_deleted', (data: any) => {
+        if (isMounted) {
+          Toast.show({ type: 'info', text1: 'Poll Removed 🗑️', text2: data?.actorName ? `${data.actorName} removed a poll` : 'Partner removed a poll' });
+          fetchDashboardData();
+        }
+      });
 
       socket?.on('event_created', (data: any) => {
         if (isMounted) {
@@ -921,6 +1369,83 @@ export default function CoupleHomeScreen({ navigation }: any) {
           });
         }
       });
+
+      socket?.on('couple_feature_request', () => {
+        if (isMounted) {
+          Toast.show({ type: 'info', text1: 'Couple+ Requested! 💕', text2: 'Your partner requested to enable Couple+' });
+          fetchDashboardData();
+        }
+      });
+
+      socket?.on('couple_feature_accepted', () => {
+        if (isMounted) {
+          Toast.show({ type: 'success', text1: 'Couple+ Activated! 🎉', text2: 'Exclusive features are now unlocked' });
+          fetchDashboardData();
+        }
+      });
+
+      socket?.on('couple_feature_declined', () => {
+        if (isMounted) {
+          Toast.show({ type: 'info', text1: 'Couple+ Declined', text2: 'Your partner declined the Couple+ request' });
+          fetchDashboardData();
+        }
+      });
+
+      socket?.on('couple_feature_disabled', () => {
+        if (isMounted) {
+          Toast.show({ type: 'info', text1: 'Couple+ Disabled', text2: 'Couple+ mode has been disabled' });
+          fetchDashboardData();
+        }
+      });
+
+      socket?.on('connection_level_updated', (data: { level: number }) => {
+        if (isMounted) {
+          setConnectionLevel(data.level);
+        }
+      });
+
+      socket?.on('couple_question_received', (newQ: any) => {
+        if (isMounted) {
+          Toast.show({ type: 'info', text1: 'New Question! 💭', text2: 'Your partner asked a question' });
+          setQuestions(prev => [newQ, ...prev]);
+        }
+      });
+
+      socket?.on('couple_question_answered', (updatedQ: any) => {
+        if (isMounted) {
+          Toast.show({ type: 'info', text1: 'Question Answered! 💌', text2: 'Your partner answered a question' });
+          setQuestions(prev => prev.map(q => q._id === updatedQ._id ? updatedQ : q));
+        }
+      });
+
+      socket?.on('wishlist_updated', () => {
+        if (isMounted) {
+          fetchWishlist();
+        }
+      });
+
+      socket?.on('position_status_updated', (data: { positionId: string; doc: any }) => {
+        if (isMounted) {
+          setPositions(prev => prev.map(p => p.id === data.positionId ? {
+            ...p,
+            favorites: data.doc.favorites,
+            wantToTry: data.doc.wantToTry,
+            tried: data.doc.tried
+          } : p));
+        }
+      });
+
+      socket?.on('idea_status_updated', () => {
+        if (isMounted) {
+          fetchIdeas();
+        }
+      });
+
+      socket?.on('challenge_status_updated', () => {
+        if (isMounted) {
+          fetchChallenges();
+        }
+      });
     };
 
     setupDashboard();
@@ -932,18 +1457,41 @@ export default function CoupleHomeScreen({ navigation }: any) {
     return () => {
       isMounted = false;
       clearInterval(interval);
-      const socket = socketService.getSocket();
-      socket?.off('user_status_change');
-      socket?.off('new_love_note');
-      socket?.off('goal_created');
-      socket?.off('goal_updated');
-      socket?.off('goal_completed');
-      socket?.off('poll_created');
-      socket?.off('poll_voted');
-      socket?.off('event_created');
-      socket?.off('quick_love_received');
+      if (socket) {
+        // Remove connect/disconnect listeners
+        const handlers = (socket as any)._homeScreenHandlers;
+        if (handlers) {
+          socket.off('connect', handlers.onConnect);
+          socket.off('disconnect', handlers.onDisconnect);
+          delete (socket as any)._homeScreenHandlers;
+        }
+        // Remove other listeners
+        socket?.off('user_status_change');
+        socket?.off('partner_mood_updated');
+        socket?.off('new_love_note');
+        socket?.off('goal_created');
+        socket?.off('goal_updated');
+        socket?.off('goal_completed');
+        socket?.off('goal_deleted');
+        socket?.off('poll_created');
+        socket?.off('poll_voted');
+        socket?.off('poll_deleted');
+        socket?.off('event_created');
+        socket?.off('quick_love_received');
+        socket?.off('couple_feature_request');
+        socket?.off('couple_feature_accepted');
+        socket?.off('couple_feature_declined');
+        socket?.off('couple_feature_disabled');
+        socket?.off('connection_level_updated');
+        socket?.off('couple_question_received');
+        socket?.off('couple_question_answered');
+        socket?.off('wishlist_updated');
+        socket?.off('position_status_updated');
+        socket?.off('idea_status_updated');
+        socket?.off('challenge_status_updated');
+      }
     };
-  }, [user?._id, partner?._id, fetchDashboardData, displayName]);
+  }, [user?._id, partner?._id, loadDefaultQuickMessage, fetchDashboardData, displayName, fetchWishlist, fetchIdeas, fetchChallenges]);
 
   // No partner state
   if (!partner) {
@@ -963,7 +1511,9 @@ export default function CoupleHomeScreen({ navigation }: any) {
 
   // Main Render
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={{ flex: 1, backgroundColor: '#070709' }}>
+      <VideoBackground />
+      {/* Simple Black Background */}
       {/* Connection Status Indicator */}
       {connectionStatus === 'disconnected' && (
         <View style={styles.connectionStatusBar}>
@@ -977,6 +1527,21 @@ export default function CoupleHomeScreen({ navigation }: any) {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} />}
       >
+        {coupleStatusFromPartner === 'pending' && (
+          <Animated.View entering={FadeInUp.duration(400)} style={styles.topRequestBanner}>
+            <Text style={styles.topRequestText}>
+              💕 {partner?.name || 'Your partner'} requested to enable Couple+ features!
+            </Text>
+            <View style={styles.topRequestButtons}>
+              <TouchableOpacity style={[styles.topRequestBtn, styles.topAcceptBtn]} onPress={handleAcceptRequest}>
+                <Text style={styles.topRequestBtnText}>Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.topRequestBtn, styles.topDeclineBtn]} onPress={handleDeclineRequest}>
+                <Text style={styles.topRequestBtnText}>Decline</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        )}
         {/* ===== ENHANCED HEADER SECTION ===== */}
         <Animated.View entering={FadeInDown.duration(400)}>
           <View style={styles.headerContainer}>
@@ -989,18 +1554,31 @@ export default function CoupleHomeScreen({ navigation }: any) {
                 {/* Ping/Miss You Button */}
                 <TouchableOpacity
                   style={styles.notificationBtnEnhanced}
-                  onPress={() => sendMissYouNotification()}
+                  onPress={() => sendMissYouNotification(defaultQuickMessage)}
                   onLongPress={() => {
+                    const baseOptions = [
+                      { text: 'Miss You ❤️', onPress: () => handleQuickPing('Miss You ❤️') },
+                      { text: 'Love You ❤️', onPress: () => handleQuickPing('Love You ❤️') },
+                      { text: 'Thinking About You 💕', onPress: () => handleQuickPing('Thinking About You 💕') },
+                      { text: 'Where Are You 👀', onPress: () => handleQuickPing('Where Are You 👀') },
+                      { text: 'What Are You Doing 😊', onPress: () => handleQuickPing('What Are You Doing 😊') },
+                    ];
+                    
+                    const customOptions = (Array.isArray(customQuickMessages) ? customQuickMessages : []).slice(0, 3).map(msg => ({
+                      text: `${msg.emoji} ${msg.text}`,
+                      onPress: () => handleQuickPing(`${msg.emoji} ${msg.text}`)
+                    }));
+                    
+                    const allOptions = [
+                      ...baseOptions,
+                      ...customOptions,
+                      { text: 'Cancel', style: 'cancel' as any }
+                    ];
+
                     Alert.alert(
                       'Quick Ping ❤️',
                       'Choose a message to send to your partner',
-                      [
-                        { text: '❤️ Miss You', onPress: () => handleQuickPing('I miss you ❤️') },
-                        { text: '📞 Call Me', onPress: () => handleQuickPing('Call me when you are free 📞') },
-                        { text: '🥺 Need You', onPress: () => handleQuickPing('I need you right now 🥺') },
-                        { text: '😘 Thinking of You', onPress: () => handleQuickPing('Thinking of you 😘') },
-                        { text: 'Cancel', style: 'cancel' },
-                      ]
+                      allOptions
                     );
                   }}
                   disabled={isSendingPing}
@@ -1082,7 +1660,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
                     <Text style={styles.avatarInitials}>{partnerInitials}</Text>
                   </View>
                 </LinearGradient>
-                <Text style={styles.avatarName}>{displayName.split(' ')[0]}</Text>
+                <Text style={styles.avatarName}>{displayName?.split(' ')[0] || 'Partner'}</Text>
               </View>
             </View>
 
@@ -1146,6 +1724,35 @@ export default function CoupleHomeScreen({ navigation }: any) {
             </View>
           </View>
         </Animated.View>
+
+        {/* 💕 Connection Meter Card (Couple+ Mode Only) */}
+        {coupleFeatureStatus === 'active' && (
+          <Animated.View entering={FadeInDown.delay(250).duration(600)}>
+            <View style={styles.couplePlusCard}>
+              <View style={styles.couplePlusCardHeader}>
+                <Text style={styles.couplePlusCardTitle}>💕 Connection Meter</Text>
+                <Text style={styles.connectionLevelText}>{connectionLevel}%</Text>
+              </View>
+              <Text style={styles.couplePlusCardSubtitle}>
+                How connected do you feel today? Slide to update your partner.
+              </Text>
+              <Slider
+                style={{ width: '100%', height: 40 }}
+                minimumValue={0}
+                maximumValue={100}
+                step={1}
+                value={connectionLevel}
+                onSlidingComplete={handleUpdateConnectionLevel}
+                minimumTrackTintColor={COLORS.primary}
+                maximumTrackTintColor="rgba(255,255,255,0.1)"
+                thumbTintColor={COLORS.primary}
+              />
+              <Text style={styles.connectionStatusSub}>
+                {connectionLevel > 80 ? '🔥 Inseparable!' : connectionLevel > 50 ? '❤️ Doing great together' : '🥺 Needs a bit of cuddle'}
+              </Text>
+            </View>
+          </Animated.View>
+        )}
 
         {/* Mood Section */}
         <Animated.View entering={FadeInDown.delay(300).duration(600)}>
@@ -1240,6 +1847,345 @@ export default function CoupleHomeScreen({ navigation }: any) {
           </Animated.View>
         )}
 
+        {/* 💭 Couple Questions Card (Couple+ Mode Only) */}
+        {coupleFeatureStatus === 'active' && (
+          <Animated.View entering={FadeInDown.delay(510).duration(600)}>
+            <View style={styles.couplePlusCard}>
+              <View style={styles.couplePlusCardHeader}>
+                <Text style={styles.couplePlusCardTitle}>💭 Couple Questions</Text>
+                <TouchableOpacity
+                  style={styles.couplePlusHeaderBtn}
+                  onPress={() => setQuestionModalVisible(true)}
+                >
+                  <FontAwesome name="plus" size={12} color="#fff" />
+                  <Text style={styles.couplePlusHeaderBtnText}>Ask</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.couplePlusCardSubtitle}>
+                Ask deep or playful questions to understand each other better.
+              </Text>
+
+              {questions.length === 0 ? (
+                <Text style={styles.emptyCardText}>No questions asked yet. Ask one!</Text>
+              ) : (
+                questions.slice(0, 3).map((q) => {
+                  const isSentByMe = q.senderId === user?._id;
+                  const isAnswered = !!q.answer;
+                  return (
+                    <View key={q._id} style={styles.questionItem}>
+                      <View style={styles.questionHeader}>
+                        <Text style={styles.questionText}>❓ {q.question}</Text>
+                        <Text style={styles.questionSender}>
+                          {isSentByMe ? 'You asked' : `${displayName} asked`}
+                        </Text>
+                      </View>
+                      {isAnswered ? (
+                        <View style={styles.answerContainer}>
+                          <Text style={styles.answerText}>💌 {q.answer}</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.answerContainer}>
+                          {isSentByMe ? (
+                            <Text style={styles.waitingText}>⏳ Waiting for {displayName}'s response...</Text>
+                          ) : (
+                            <TouchableOpacity
+                              style={styles.answerBtn}
+                              onPress={() => {
+                                setSelectedQuestionForAnswer(q);
+                                setAnswerModalVisible(true);
+                              }}
+                            >
+                              <Text style={styles.answerBtnText}>Answer now 📝</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* ✨ Romantic Date Ideas Card (Couple+ Mode Only) */}
+        {coupleFeatureStatus === 'active' && (
+          <Animated.View entering={FadeInDown.delay(520).duration(600)}>
+            <View style={styles.couplePlusCard}>
+              <View style={styles.couplePlusCardHeader}>
+                <Text style={styles.couplePlusCardTitle}>✨ Romantic Date Ideas</Text>
+              </View>
+              <Text style={styles.couplePlusCardSubtitle}>
+                Like or complete date ideas together!
+              </Text>
+              {ideas.length === 0 ? (
+                <Text style={styles.emptyCardText}>No date ideas loaded.</Text>
+              ) : (
+                ideas.map((idea) => {
+                  const hasLiked = idea.likes?.includes(user?._id);
+                  const partnerLiked = idea.likes?.includes(partner?._id);
+                  return (
+                    <View key={idea.id} style={styles.ideaItem}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.ideaTitle, idea.isCompleted && styles.completedText]}>
+                          {idea.title}
+                        </Text>
+                        <Text style={styles.ideaDesc}>{idea.desc}</Text>
+                        <View style={styles.ideaLikesRow}>
+                          {hasLiked && <Text style={styles.ideaLikeBadge}>You liked ❤️</Text>}
+                          {partnerLiked && <Text style={styles.ideaLikeBadge}>{displayName} liked ❤️</Text>}
+                        </View>
+                      </View>
+                      <View style={styles.ideaActions}>
+                        <TouchableOpacity
+                          style={[styles.ideaActionBtn, hasLiked && styles.ideaActionBtnActive]}
+                          onPress={() => handleToggleIdeaLike(idea.id)}
+                        >
+                          <FontAwesome name={hasLiked ? "heart" : "heart-o"} size={16} color={hasLiked ? COLORS.primary : COLORS.subtext} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.ideaActionBtn, idea.isCompleted && styles.ideaActionBtnCompleted]}
+                          onPress={() => handleToggleIdeaComplete(idea.id, idea.isCompleted)}
+                        >
+                          <FontAwesome name={idea.isCompleted ? "check-circle" : "circle-o"} size={16} color={idea.isCompleted ? "#4D96FF" : COLORS.subtext} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* 🔥 Couple Challenges Card (Couple+ Mode Only) */}
+        {coupleFeatureStatus === 'active' && (
+          <Animated.View entering={FadeInDown.delay(530).duration(600)}>
+            <View style={styles.couplePlusCard}>
+              <View style={styles.couplePlusCardHeader}>
+                <Text style={styles.couplePlusCardTitle}>🔥 Couple Challenges</Text>
+              </View>
+              <Text style={styles.couplePlusCardSubtitle}>
+                Complete these challenges together to strengthen your bond.
+              </Text>
+              {challenges.length === 0 ? (
+                <Text style={styles.emptyCardText}>No challenges loaded.</Text>
+              ) : (
+                challenges.map((ch) => (
+                  <View key={ch.id} style={styles.challengeItem}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.challengeTitle, ch.isCompleted && styles.completedText]}>
+                        {ch.title}
+                      </Text>
+                      <Text style={styles.challengeDesc}>{ch.desc}</Text>
+                      {ch.isCompleted && ch.completedAt && (
+                        <Text style={styles.challengeCompletedAt}>
+                          Completed on: {new Date(ch.completedAt).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.challengeCheckBtn, ch.isCompleted && styles.challengeCheckBtnActive]}
+                      onPress={() => handleToggleChallengeComplete(ch.id, ch.isCompleted)}
+                    >
+                      <FontAwesome name={ch.isCompleted ? "check-square" : "square-o"} size={18} color={ch.isCompleted ? COLORS.primary : COLORS.subtext} />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* 🔒 Private Wishlist Card (Couple+ Mode Only) */}
+        {coupleFeatureStatus === 'active' && (
+          <Animated.View entering={FadeInDown.delay(540).duration(600)}>
+            <View style={styles.couplePlusCard}>
+              <View style={styles.couplePlusCardHeader}>
+                <Text style={styles.couplePlusCardTitle}>🔒 Private Wishlist</Text>
+                <TouchableOpacity
+                  style={styles.couplePlusHeaderBtn}
+                  onPress={() => setWishlistModalVisible(true)}
+                >
+                  <FontAwesome name="plus" size={12} color="#fff" />
+                  <Text style={styles.couplePlusHeaderBtnText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.couplePlusCardSubtitle}>
+                A private bucket list or gift list just for the two of you.
+              </Text>
+              {wishlist.length === 0 ? (
+                <Text style={styles.emptyCardText}>Your wishlist is empty. Add something special!</Text>
+              ) : (
+                wishlist.map((item) => (
+                  <View key={item._id} style={styles.wishlistItem}>
+                    <TouchableOpacity
+                      style={styles.wishlistCheckbox}
+                      onPress={() => handleToggleWishlist(item._id, item.isCompleted)}
+                    >
+                      <FontAwesome
+                        name={item.isCompleted ? "check-circle" : "circle-o"}
+                        size={18}
+                        color={item.isCompleted ? COLORS.primary : COLORS.subtext}
+                      />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.wishlistTitle, item.isCompleted && styles.completedText]}>
+                        {item.title}
+                      </Text>
+                      {!!item.notes && (
+                        <Text style={styles.wishlistNotes}>{item.notes}</Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={styles.wishlistDeleteBtn}
+                      onPress={() => handleDeleteWishlist(item._id)}
+                    >
+                      <FontAwesome name="trash" size={16} color={COLORS.subtext} />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* ❤️ Position Explorer Card (Couple+ Mode Only) */}
+        {coupleFeatureStatus === 'active' && (
+          <Animated.View entering={FadeInDown.delay(550).duration(600)}>
+            <View style={styles.couplePlusCard}>
+              <View style={styles.couplePlusCardHeader}>
+                <Text style={styles.couplePlusCardTitle}>❤️ Position Explorer</Text>
+              </View>
+              <Text style={styles.couplePlusCardSubtitle}>
+                Discover and log intimacy preferences. Everything syncs instantly.
+              </Text>
+
+              {/* Category tabs */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryTabs} contentContainerStyle={{ paddingBottom: 6 }}>
+                {['Romantic', 'Passionate', 'Intimate', 'Beginner Friendly', 'Advanced', 'Surprise Me'].map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[
+                      styles.categoryTab,
+                      selectedCategory === cat && styles.categoryTabActive,
+                    ]}
+                    onPress={() => setSelectedCategory(cat)}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryTabLabel,
+                        selectedCategory === cat && styles.categoryTabLabelActive,
+                      ]}
+                    >
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* List of positions */}
+              {selectedCategory === 'Surprise Me' ? (
+                <View style={styles.surpriseContainer}>
+                  <Text style={styles.surpriseText}>Feeling adventurous? Let fate decide!</Text>
+                  <TouchableOpacity
+                    style={styles.surpriseBtn}
+                    onPress={() => {
+                      const categories = ['Romantic', 'Passionate', 'Intimate', 'Beginner Friendly', 'Advanced'];
+                      const randomCat = categories[Math.floor(Math.random() * categories.length)];
+                      setSelectedCategory(randomCat);
+                      Toast.show({
+                        type: 'info',
+                        text1: `🎲 Surprise Category: ${randomCat}!`,
+                        visibilityTime: 1500,
+                      });
+                    }}
+                  >
+                    <FontAwesome name="random" size={16} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={styles.surpriseBtnText}>Pick Category 🎲</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                positions
+                  .filter((p) => p.category === selectedCategory)
+                  .map((p) => {
+                    const isFavMe = p.favorites?.includes(user?._id);
+                    const isFavPartner = p.favorites?.includes(partner?._id);
+                    const wantTryMe = p.wantToTry?.includes(user?._id);
+                    const wantTryPartner = p.wantToTry?.includes(partner?._id);
+                    const triedMe = p.tried?.includes(user?._id);
+                    const triedPartner = p.tried?.includes(partner?._id);
+
+                    return (
+                      <View key={p.id} style={styles.positionItem}>
+                        <View style={styles.positionMain}>
+                          <PositionIllustration id={p.id} />
+                          <View style={styles.positionInfo}>
+                            <Text style={styles.positionName}>{p.name}</Text>
+                            <View style={styles.positionMetaRow}>
+                              <Text style={styles.positionMeta}>💪 {p.difficulty}</Text>
+                              <Text style={styles.positionMeta}>⚡ {p.energyLevel}</Text>
+                            </View>
+                            {!!p.notes && (
+                              <Text style={styles.positionNotesText}>Notes: {p.notes}</Text>
+                            )}
+                          </View>
+                        </View>
+
+                        {/* Status sync indicators */}
+                        <View style={styles.statusSyncRow}>
+                          <View style={styles.partnerStatuses}>
+                            <Text style={styles.statusLabel}>Partner:</Text>
+                            <Text style={[styles.statusIcon, isFavPartner && styles.statusActive]}>
+                              {isFavPartner ? '❤️ Fav' : '🖤'}
+                            </Text>
+                            <Text style={[styles.statusIcon, wantTryPartner && styles.statusActive]}>
+                              {wantTryPartner ? '⭐ Try' : '☆'}
+                            </Text>
+                            <Text style={[styles.statusIcon, triedPartner && styles.statusActive]}>
+                              {triedPartner ? '✔ Tried' : '☐'}
+                            </Text>
+                          </View>
+
+                          <View style={styles.myIntimacyActions}>
+                            <TouchableOpacity
+                              style={[styles.intimacyBtn, isFavMe && styles.intimacyBtnActive]}
+                              onPress={() => handleTogglePositionStatus(p.id, 'favorite', isFavMe)}
+                            >
+                              <FontAwesome name={isFavMe ? "heart" : "heart-o"} size={16} color={isFavMe ? COLORS.primary : COLORS.subtext} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.intimacyBtn, wantTryMe && styles.intimacyBtnActive]}
+                              onPress={() => handleTogglePositionStatus(p.id, 'wantToTry', wantTryMe)}
+                            >
+                              <FontAwesome name={wantTryMe ? "star" : "star-o"} size={16} color={wantTryMe ? "#FFD700" : COLORS.subtext} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.intimacyBtn, triedMe && styles.intimacyBtnActive]}
+                              onPress={() => handleTogglePositionStatus(p.id, 'tried', triedMe)}
+                            >
+                              <FontAwesome name={triedMe ? "check-circle" : "circle-o"} size={16} color={triedMe ? "#4D96FF" : COLORS.subtext} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.intimacyBtn}
+                              onPress={() => {
+                                setSelectedPositionForNotes(p);
+                                setPositionNotesInput(p.notes || '');
+                                setPositionNotesModalVisible(true);
+                              }}
+                            >
+                              <FontAwesome name="pencil" size={14} color={COLORS.subtext} />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })
+              )}
+            </View>
+          </Animated.View>
+        )}
+
         {/* Shared Goals */}
         <Animated.View entering={FadeInDown.delay(500).duration(600)}>
           <Text style={styles.sectionDivider}>🎯 Shared Goals</Text>
@@ -1247,6 +2193,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
             goals={goals}
             onUpdateProgress={handleUpdateGoalProgress}
             onAddGoal={() => setGoalModalVisible(true)}
+            onDeleteGoal={handleDeleteGoal}
           />
         </Animated.View>
 
@@ -1257,6 +2204,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
             polls={polls}
             onVote={handleVote}
             onAddPoll={() => setPollModalVisible(true)}
+            onDeletePoll={handleDeletePoll}
           />
         </Animated.View>
 
@@ -1275,6 +2223,26 @@ export default function CoupleHomeScreen({ navigation }: any) {
           <Text style={styles.sectionDivider}>📱 Recent Activity</Text>
           <ActivityFeedCard activities={activities} />
         </Animated.View>
+
+        {/* Achievements Card (Normal Mode Only) */}
+        {coupleFeatureStatus !== 'active' && (
+          <Animated.View entering={FadeInDown.delay(850).duration(600)}>
+            <TouchableOpacity onPress={() => navigation.navigate('Achievements')}>
+              <View style={styles.achievementsCard}>
+                <View style={styles.achievementsHeader}>
+                  <View style={styles.achievementsHeaderLeft}>
+                    <FontAwesome name="trophy" size={20} color="#FFD700" style={{ marginRight: 8 }} />
+                    <Text style={styles.achievementsTitle}>🏆 Achievements</Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={24} color={COLORS.subtext} />
+                </View>
+                <Text style={styles.achievementsText}>
+                  You have unlocked {unlockedAchievements.length} relationship milestones! Keep going to unlock more.
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
         {/* Bottom padding for FAB */}
         <View style={{ height: 100 }} />
@@ -1411,7 +2379,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
 
             <ScrollView style={{ maxHeight: 300, marginTop: 16 }}>
               <Text style={styles.customMessagesTitle}>Your Custom Messages:</Text>
-              {customQuickMessages.length === 0 ? (
+              {!Array.isArray(customQuickMessages) || customQuickMessages.length === 0 ? (
                 <Text style={styles.noMessagesText}>No custom messages yet. Add one above! ✨</Text>
               ) : (
                 customQuickMessages.map((msg) => (
@@ -1615,12 +2583,157 @@ export default function CoupleHomeScreen({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* Ask a Question Modal */}
+      <Modal visible={isQuestionModalVisible} transparent animationType="slide" onRequestClose={() => setQuestionModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Ask a Question 💭</Text>
+            <Text style={styles.modalSubtitle}>Send a question to your partner</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={questionInput}
+              onChangeText={setQuestionInput}
+              placeholder="What is your favorite memory of us?"
+              placeholderTextColor="#666"
+              multiline
+              numberOfLines={3}
+              maxLength={200}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setQuestionModalVisible(false)}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalButton, styles.saveButton, isSavingQuestion && styles.buttonDisabled]} onPress={handleSaveQuestion} disabled={isSavingQuestion}>
+                {isSavingQuestion ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveButtonText}>Ask Partner 💭</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Answer a Question Modal */}
+      <Modal visible={isAnswerModalVisible} transparent animationType="slide" onRequestClose={() => setAnswerModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Answer Question 💌</Text>
+            {selectedQuestionForAnswer && (
+              <Text style={styles.modalSubtitle}>Question: "{selectedQuestionForAnswer.question}"</Text>
+            )}
+            <TextInput
+              style={styles.modalInput}
+              value={answerInput}
+              onChangeText={setAnswerInput}
+              placeholder="Your answer..."
+              placeholderTextColor="#666"
+              multiline
+              numberOfLines={3}
+              maxLength={200}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => {
+                setAnswerModalVisible(false);
+                setAnswerInput('');
+                setSelectedQuestionForAnswer(null);
+              }}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalButton, styles.saveButton, isSavingAnswer && styles.buttonDisabled]} onPress={handleSaveAnswer} disabled={isSavingAnswer}>
+                {isSavingAnswer ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveButtonText}>Submit Answer 💌</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Add Wishlist Item Modal */}
+      <Modal visible={isWishlistModalVisible} transparent animationType="slide" onRequestClose={() => setWishlistModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add to Wishlist 🎁</Text>
+            <Text style={styles.modalSubtitle}>Create a shared wishlist item</Text>
+            <TextInput
+              style={[styles.modalInput, { height: 50 }]}
+              value={wishlistTitle}
+              onChangeText={setWishlistTitle}
+              placeholder="e.g., Weekend getaway to hills"
+              placeholderTextColor="#666"
+              autoFocus
+            />
+            <TextInput
+              style={styles.modalInput}
+              value={wishlistNotes}
+              onChangeText={setWishlistNotes}
+              placeholder="Notes/details (optional)"
+              placeholderTextColor="#666"
+              multiline
+              numberOfLines={2}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setWishlistModalVisible(false)}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalButton, styles.saveButton, isSavingWishlist && styles.buttonDisabled]} onPress={handleSaveWishlist} disabled={isSavingWishlist}>
+                {isSavingWishlist ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveButtonText}>Add Item 🔒</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Edit Position Notes Modal */}
+      <Modal visible={isPositionNotesModalVisible} transparent animationType="slide" onRequestClose={() => setPositionNotesModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Intimacy Notes 📝</Text>
+            {selectedPositionForNotes && (
+              <Text style={styles.modalSubtitle}>Notes for "{selectedPositionForNotes.name}"</Text>
+            )}
+            <TextInput
+              style={styles.modalInput}
+              value={positionNotesInput}
+              onChangeText={setPositionNotesInput}
+              placeholder="Add personal notes, thoughts or dates tried..."
+              placeholderTextColor="#666"
+              multiline
+              numberOfLines={4}
+              maxLength={300}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => {
+                setPositionNotesModalVisible(false);
+                setPositionNotesInput('');
+                setSelectedPositionForNotes(null);
+              }}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalButton, styles.saveButton, isSavingPositionNotes && styles.buttonDisabled]} onPress={handleSavePositionNotes} disabled={isSavingPositionNotes}>
+                {isSavingPositionNotes ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveButtonText}>Save Notes 📝</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Floating Action Menu */}
       <FloatingActionMenu
         onAddGoal={() => setGoalModalVisible(true)}
         onAddPoll={() => setPollModalVisible(true)}
         onAddNote={() => setNoteModalVisible(true)}
         onAddEvent={() => setEventModalVisible(true)}
+        onAddMood={() => setMoodModalVisible(true)}
+        onAddWishlist={() => setWishlistModalVisible(true)}
+        onAddQuestion={() => setQuestionModalVisible(true)}
+        onAddDateIdea={() => {
+          Toast.show({
+            type: 'info',
+            text1: '✨ Swipe down to see Romantic Ideas!',
+            text2: 'Like and complete date ideas with your partner.',
+          });
+        }}
+        isCouplePlus={coupleFeatureStatus === 'active'}
       />
     </View>
   );
@@ -1631,7 +2744,6 @@ export default function CoupleHomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
     paddingHorizontal: SPACING.md,
   },
   scrollContent: {
@@ -2682,5 +3794,458 @@ const styles = StyleSheet.create({
     color: COLORS.subtext,
     fontSize: 10,
     fontWeight: '500',
+  },
+  // Couple+ Card Styles
+  couplePlusCard: {
+    backgroundColor: 'rgba(17, 17, 17, 0.85)',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  couplePlusCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  couplePlusCardTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  couplePlusCardSubtitle: {
+    color: COLORS.subtext,
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  couplePlusHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  couplePlusHeaderBtnText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  connectionLevelText: {
+    color: COLORS.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  connectionStatusSub: {
+    color: COLORS.subtext,
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  emptyCardText: {
+    color: COLORS.subtext,
+    fontSize: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 12,
+  },
+  // Questions Styles
+  questionItem: {
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.03)',
+  },
+  questionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  questionText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+    paddingRight: 8,
+  },
+  questionSender: {
+    color: COLORS.subtext,
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  answerContainer: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  answerText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  waitingText: {
+    color: COLORS.subtext,
+    fontSize: 11,
+    fontStyle: 'italic',
+  },
+  answerBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 79, 139, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  answerBtnText: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  // Wishlist Styles
+  wishlistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.03)',
+  },
+  wishlistCheckbox: {
+    marginRight: 12,
+  },
+  wishlistTitle: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  completedText: {
+    textDecorationLine: 'line-through',
+    color: COLORS.subtext,
+    opacity: 0.7,
+  },
+  wishlistNotes: {
+    color: COLORS.subtext,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  wishlistDeleteBtn: {
+    padding: 8,
+  },
+  // Ideas Styles
+  ideaItem: {
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.03)',
+  },
+  ideaTitle: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  ideaDesc: {
+    color: COLORS.subtext,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  ideaLikesRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  ideaLikeBadge: {
+    fontSize: 10,
+    color: COLORS.primary,
+    backgroundColor: 'rgba(255, 79, 139, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  ideaActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ideaActionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ideaActionBtnActive: {
+    backgroundColor: 'rgba(255, 79, 139, 0.15)',
+  },
+  ideaActionBtnCompleted: {
+    backgroundColor: 'rgba(77, 150, 255, 0.15)',
+  },
+  // Challenges Styles
+  challengeItem: {
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.03)',
+  },
+  challengeTitle: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  challengeDesc: {
+    color: COLORS.subtext,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  challengeCompletedAt: {
+    color: COLORS.primary,
+    fontSize: 9,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  challengeCheckBtn: {
+    padding: 8,
+  },
+  challengeCheckBtnActive: {
+    opacity: 0.8,
+  },
+  // Position Explorer Styles
+  categoryTabs: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+  categoryTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  categoryTabActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  categoryTabLabel: {
+    color: COLORS.subtext,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  categoryTabLabelActive: {
+    color: '#fff',
+  },
+  surpriseContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 12,
+  },
+  surpriseText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  surpriseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  surpriseBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  positionItem: {
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.03)',
+  },
+  positionMain: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  illustrationContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  positionInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  positionName: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  positionMetaRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  positionMeta: {
+    color: COLORS.subtext,
+    fontSize: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  positionNotesText: {
+    color: '#FFB84C',
+    fontSize: 11,
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+  statusSyncRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    paddingTop: 10,
+    marginTop: 10,
+  },
+  partnerStatuses: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusLabel: {
+    color: COLORS.subtext,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  statusIcon: {
+    color: COLORS.subtext,
+    fontSize: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  statusActive: {
+    color: COLORS.primary,
+    backgroundColor: 'rgba(255, 79, 139, 0.12)',
+    fontWeight: 'bold',
+  },
+  myIntimacyActions: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  intimacyBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  intimacyBtnActive: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  // Top request banner
+  topRequestBanner: {
+    backgroundColor: 'rgba(255, 79, 139, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 79, 139, 0.3)',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 16,
+    alignItems: 'center',
+    gap: 10,
+    marginTop: Platform.OS === 'ios' ? 10 : 0,
+  },
+  topRequestText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  topRequestButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  topRequestBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topAcceptBtn: {
+    backgroundColor: COLORS.primary,
+  },
+  topDeclineBtn: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  topRequestBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // Achievements card (Normal Mode)
+  achievementsCard: {
+    backgroundColor: 'rgba(17, 17, 17, 0.85)',
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  achievementsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  achievementsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  achievementsTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  achievementsText: {
+    color: COLORS.subtext,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

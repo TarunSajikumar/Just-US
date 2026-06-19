@@ -20,6 +20,20 @@ const coupleSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    coupleFeatureStatus: {
+      type: String,
+      enum: ["pending", "active", "declined", null],
+      default: null,
+    },
+    coupleFeatureRequester: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    connectionLevel: {
+      type: Number,
+      default: 75,
+    },
   },
   {
     timestamps: true,

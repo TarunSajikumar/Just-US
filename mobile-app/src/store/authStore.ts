@@ -1,5 +1,4 @@
 import { storageService } from '../services/storageService';
-import { authService } from '../services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -89,6 +88,7 @@ export const useAuthStore = create<AuthState>()(
       setPartnerPingMessage: (partnerPingMessage) => set({ partnerPingMessage }),
       setNotificationsEnabled: (notificationsEnabled) => set({ notificationsEnabled }),
       refreshUser: async () => {
+        const { authService } = await import('../services/authService');
         await authService.me();
       },
       logout: () => {

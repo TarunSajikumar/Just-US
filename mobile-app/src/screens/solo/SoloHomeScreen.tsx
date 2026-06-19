@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
 import { inviteService } from '../../services/inviteService';
 import Toast from 'react-native-toast-message';
+import VideoBackground from '../../components/VideoBackground';
 
 // ============ Constants ============
 const DAILY_QUOTES = [
@@ -218,8 +219,10 @@ export default function SoloHomeScreen({ navigation }: any) {
   }, [joinCode]);
 
   return (
-    <ScrollView
-      style={styles.container}
+    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <VideoBackground />
+      <ScrollView
+        style={styles.container}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.contentContainer}
       refreshControl={
@@ -409,6 +412,7 @@ export default function SoloHomeScreen({ navigation }: any) {
         💕 Once connected, you'll unlock private chat, shared gallery, and more!
       </Text>
     </ScrollView>
+    </View>
   );
 }
 
@@ -416,7 +420,7 @@ export default function SoloHomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   contentContainer: {
     paddingHorizontal: SPACING.md,

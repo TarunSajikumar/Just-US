@@ -1,10 +1,14 @@
 import { api } from './api';
-import { clearAuthData, saveAuthData } from '../store/authStore';
-import { useAuthStore } from '../store/authStore';
+
+// Don't import clearAuthData and saveAuthData at top level - import from authStore only when needed
+// to avoid circular dependency issues
 
 export const authService = {
   /** Helper to update Zustand store with user profile data */
   updateStoreWithProfile: async (profile: any) => {
+    const { useAuthStore } = await import('../store/authStore');
+    const { saveAuthData } = await import('../store/authStore');
+    
     const {
       setUser,
       setPartner,
@@ -122,7 +126,16 @@ export const authService = {
   },
 
   logout: async () => {
+    const { clearAuthData } = await import('../store/authStore');
+    const { useAuthStore } = await import('../store/authStore');
+    
     await clearAuthData();
     useAuthStore.getState().logout();
+    try {
+      const { socketService } = await import('./socket');
+      socketService.disconnect();
+    } catch (e) {
+      console.error('Failed to disconnect socket on logout:', e);
+    }
   },
 };

@@ -15,6 +15,7 @@ import Download from '@/components/Download'
 import Footer from '@/components/Footer'
 import CustomCursor from '@/components/CustomCursor'
 import ThreeBackground from '@/components/ThreeBackground'
+import { Component as EtheralShadow } from '@/components/ui/etheral-shadow'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -50,6 +51,15 @@ export default function Home() {
     <>
       <div id="scroll-progress" />
       <CustomCursor />
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.25]">
+        <EtheralShadow
+          color="rgba(201, 169, 110, 1)"
+          animation={{ scale: 100, speed: 70 }}
+          noise={{ opacity: 0.8, scale: 1.2 }}
+          sizing="fill"
+          showTitle={false}
+        />
+      </div>
       <ThreeBackground mousePosition={mousePosition} />
 
       {/* Grain overlay */}

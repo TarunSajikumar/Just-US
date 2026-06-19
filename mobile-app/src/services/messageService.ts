@@ -9,10 +9,15 @@ export interface ChatMessage {
   created_at: string;
   status?: 'sent' | 'delivered' | 'read';
   media_url?: string;
-  media_type?: 'photo' | 'video';
+  media_type?: 'photo' | 'video' | 'audio' | 'document';
   reaction?: string | null;
   reply_to?: string | null;
   isTemp?: boolean;
+  is_voice?: boolean;
+  voice_duration?: number;
+  is_pinned?: boolean;
+  is_saved?: boolean;
+  is_edited?: boolean;
 }
 
 export const messageService = {
@@ -106,5 +111,62 @@ export const messageService = {
    */
   addReaction: async (messageId: string, reaction: string): Promise<void> => {
     await api.post(`/messages/${messageId}/reaction`, { reaction });
+  },
+
+  /**
+   * POST /api/messages/media
+   * Upload and send a voice message.
+   */
+  sendVoiceMessage: async (partnerId: string, uri: string): Promise<ChatMessage> => {
+    const formData = new FormData();
+    formData.append('partnerId', partnerId);
+    formData.append('mediaType', 'audio');
+    const filename = uri.split('/').pop() || `voice_${Date.now()}.m4a`;
+    formData.append('file', {
+      uri,
+      name: filename,
+      type: 'audio/m4a',
+    } as any);
+
+    const response = await api.post('/messages/media', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.message;
+  },
+
+  /**
+   * POST /api/messages/media
+   * Upload and send a document.
+   */
+  sendDocument: async (partnerId: string, uri: string, name: string): Promise<ChatMessage> => {
+    const formData = new FormData();
+    formData.append('partnerId', partnerId);
+    formData.append('mediaType', 'document');
+    formData.append('file', {
+      uri,
+      name: name,
+      type: 'application/octet-stream',
+    } as any);
+
+    const response = await api.post('/messages/media', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.message;
+  },
+
+  /**
+   * POST /api/messages/:messageId/delete-for-me
+   * Deletes a message for the current user only.
+   */
+  deleteMessageForMe: async (messageId: string): Promise<void> => {
+    await api.post(`/messages/${messageId}/delete-for-me`);
+  },
+
+  /**
+   * POST /api/messages/:messageId/forward
+   * Forwards a message to another user.
+   */
+  forwardMessage: async (messageId: string, targetUserId: string): Promise<void> => {
+    await api.post(`/messages/${messageId}/forward`, { targetUserId });
   },
 };

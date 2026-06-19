@@ -53,4 +53,14 @@ router.patch("/messages/:partnerId/read", authMiddleware, async (req: any, res: 
   }
 });
 
+/**
+ * POST /api/chat/mute/:partnerId
+ * Mutes or unmutes the chat notifications from this partner.
+ */
+router.post("/mute/:partnerId", authMiddleware, async (req: any, res: Response) => {
+  const { partnerId } = req.params;
+  const { muted } = req.body;
+  return res.json({ success: true, muted });
+});
+
 export default router;

@@ -49,47 +49,27 @@ export const setupSockets = (io: Server) => {
     });
 
     // ── Send text message ─────────────────────────────────
-    socket.on("send_message", async (data: { receiverId: string; message: string; reply_to?: string | null }) => {
+    socket.on("send_message", (data: { receiverId: string; message: any }) => {
       if (!userId) {
         socket.emit("error", { message: "Not authenticated" });
         return;
       }
 
-      const { receiverId, message, reply_to } = data;
+      const { receiverId, message } = data;
 
-      if (!receiverId || !message?.trim()) {
+      if (!receiverId || !message) {
         socket.emit("error", { message: "receiverId and message are required" });
         return;
       }
 
-      try {
-        const saved = await Message.create({
-          sender_id: userId,
-          receiver_id: receiverId,
-          message: message.trim(),
-          reply_to: reply_to || null,
-          read: false,
-          status: "sent",
-        });
-
-        const room = roomId(userId, receiverId);
-        io.to(room).emit("message", {
-          id: saved._id,
-          sender_id: saved.sender_id,
-          receiver_id: saved.receiver_id,
-          message: saved.message,
-          read: saved.read,
-          status: "sent",
-          reply_to: saved.reply_to || null,
-          created_at: saved.createdAt,
-        });
-
-        // Notify sender: message delivered when partner receives it
-        socket.emit("message_status", { messageId: saved._id, status: "delivered" });
-      } catch (error) {
-        console.error("Failed to save message:", error);
-        socket.emit("error", { message: "Failed to send message" });
-      }
+      const room = roomId(userId, receiverId);
+      const sanitizedMessage = {
+        ...message,
+        sender_id: userId, // enforce authenticated user ID for safety
+      };
+      
+      socket.to(room).emit("message", sanitizedMessage);
+      console.log(`Socket message from ${userId} to ${receiverId} broadcasted in room ${room}`);
     });
 
     // ── Send media (already persisted by REST) ────────────
@@ -97,7 +77,11 @@ export const setupSockets = (io: Server) => {
       if (!userId) return;
       const { receiverId, mediaMessage } = data;
       const room = roomId(userId, receiverId);
-      socket.to(room).emit("message", mediaMessage);
+      const sanitizedMediaMessage = {
+        ...mediaMessage,
+        sender_id: userId, // enforce authenticated user ID for safety
+      };
+      socket.to(room).emit("message", sanitizedMediaMessage);
     });
 
     // ── Delete message ────────────────────────────────────

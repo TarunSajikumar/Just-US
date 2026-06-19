@@ -34,7 +34,7 @@ const messageSchema = new mongoose.Schema(
     },
     media_type: {
       type: String,
-      enum: ['photo', 'video', null],
+      enum: ['photo', 'video', 'audio', 'document', null],
       default: null,
     },
     reaction: {
@@ -45,6 +45,30 @@ const messageSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    is_voice: {
+      type: Boolean,
+      default: false,
+    },
+    voice_duration: {
+      type: Number,
+      default: 0,
+    },
+    is_pinned: {
+      type: Boolean,
+      default: false,
+    },
+    is_saved_by: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
+    is_edited: {
+      type: Boolean,
+      default: false,
+    },
+    deleted_by: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
   },
   {
     timestamps: true,

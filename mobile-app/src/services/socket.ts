@@ -1,34 +1,84 @@
 import { io, Socket } from 'socket.io-client';
 import { storageService } from './storageService';
 import { BASE_URL } from './api';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 
 // Derive socket URL from the API base (strip /api suffix)
 const SOCKET_URL = BASE_URL.replace('/api', '');
 
 class SocketService {
   private socket: Socket | null = null;
+  private connectPromise: Promise<Socket | null> | null = null;
+  private isConnecting = false;
+
+  constructor() {
+    this.setupAppStateListener();
+  }
+
+  private setupAppStateListener() {
+    if (Platform.OS === 'web') {
+      // Don't disconnect on Web when focus changes to keep receiving messages
+      return;
+    }
+    AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      console.log(`📱 AppState changed to: ${nextAppState}`);
+      if (nextAppState === 'active') {
+        if (this.socket && !this.socket.connected) {
+          console.log('🔌 App active: Reconnecting socket...');
+          this.socket.connect();
+        }
+      } else if (nextAppState === 'background' || nextAppState === 'inactive') {
+        if (this.socket && this.socket.connected) {
+          console.log('🔌 App background/inactive: Disconnecting socket...');
+          this.socket.disconnect();
+        }
+      }
+    });
+  }
 
   async connect() {
-    const token = await storageService.getItem('userToken');
+    // If already connected, return existing socket
+    if (this.socket?.connected) {
+      return this.socket;
+    }
 
-    this.socket = io(SOCKET_URL, {
-      auth: { token },         // JWT — backend verifies this on connect
-      transports: ['websocket'],
-    });
+    // If already connecting, wait for that promise
+    if (this.isConnecting && this.connectPromise) {
+      return this.connectPromise;
+    }
 
-    this.socket.on('connect', () => {
-      console.log('✅ Socket connected');
-    });
+    // If socket exists but disconnected, try to reconnect it
+    if (this.socket && !this.socket.connected) {
+      this.socket.connect();
+      return this.socket;
+    }
 
-    this.socket.on('connect_error', (err) => {
-      console.error('❌ Socket connect error:', err.message);
-    });
+    this.isConnecting = true;
+    this.connectPromise = (async () => {
+      try {
+        const token = await storageService.getItem('userToken');
+        if (!token) {
+          console.warn('⚠️ Cannot connect socket: No token found');
+          return null;
+        }
 
-    this.socket.on('disconnect', () => {
-      console.log('Socket disconnected');
-    });
+        this.socket = io(SOCKET_URL, {
+          auth: { token },
+          transports: ['websocket'],
+          reconnection: true,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+          reconnectionAttempts: 5,
+        });
 
-    return this.socket;
+        return this.socket;
+      } finally {
+        this.isConnecting = false;
+        this.connectPromise = null;
+      }
+    })();
+
+    return this.connectPromise;
   }
 
   getSocket() {
@@ -38,6 +88,7 @@ class SocketService {
   disconnect() {
     this.socket?.disconnect();
     this.socket = null;
+    this.connectPromise = null;
   }
 
   /** Emit user-online event */
@@ -51,8 +102,8 @@ class SocketService {
   }
 
   /** Send a text message to your partner */
-  sendMessage(receiverId: string, message: string, replyToId?: string | null) {
-    this.socket?.emit('send_message', { receiverId, message, reply_to: replyToId || null });
+  sendMessage(receiverId: string, message: any) {
+    this.socket?.emit('send_message', { receiverId, message });
   }
 
   /** Send a media message object (already persisted) to partner in real-time */
@@ -90,6 +141,12 @@ class SocketService {
   onMessageStatus(callback: (data: { messageId: string; status: string }) => void) {
     this.socket?.off('message_status');
     this.socket?.on('message_status', callback);
+  }
+
+  /** Listen for messages being read */
+  onMessagesRead(callback: (data: { readerId: string }) => void) {
+    this.socket?.off('messages_read');
+    this.socket?.on('messages_read', callback);
   }
 
   /** Listen for message deletion events */

@@ -15,6 +15,8 @@ interface ChatInputProps {
   onTyping?: (isTyping: boolean) => void;
   partnerId?: string;
   isSendingMedia?: boolean;
+  isSending?: boolean;
+  voiceRecorder?: React.ReactNode;
 }
 
 export const ChatInput = ({
@@ -23,6 +25,8 @@ export const ChatInput = ({
   onTyping,
   partnerId,
   isSendingMedia,
+  isSending,
+  voiceRecorder,
 }: ChatInputProps) => {
   const [text, setText] = useState('');
   const typingTimeoutRef = useRef<any>(null);
@@ -84,13 +88,21 @@ export const ChatInput = ({
         maxLength={1000}
       />
 
-      <TouchableOpacity
-        style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
-        onPress={handleSend}
-        disabled={!text.trim()}
-      >
-        <FontAwesome name="paper-plane" size={18} color="#fff" />
-      </TouchableOpacity>
+      {text.trim() ? (
+        <TouchableOpacity
+          style={[styles.sendBtn, isSending && styles.sendBtnDisabled]}
+          onPress={handleSend}
+          disabled={isSending}
+        >
+          {isSending ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <FontAwesome name="paper-plane" size={18} color="#fff" />
+          )}
+        </TouchableOpacity>
+      ) : (
+        voiceRecorder
+      )}
     </View>
   );
 };

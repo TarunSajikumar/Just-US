@@ -122,6 +122,8 @@ export default function SettingsScreen({ navigation }: any) {
   // ===== COUPLE+ SETTINGS =====
   const [coupleFeatureEnabled, setCoupleFeatureEnabled] = useState(false);
   const [coupleFeatureStatus, setCoupleFeatureStatus] = useState<'pending' | 'active' | 'declined' | null>(null);
+  const [coupleStatusFromPartner, setCoupleStatusFromPartner] = useState<'pending' | 'active' | 'declined' | null>(null);
+  const [coupleStatusFromMe, setCoupleStatusFromMe] = useState<'pending' | 'active' | 'declined' | null>(null);
   const [isTogglingCoupleFeature, setIsTogglingCoupleFeature] = useState(false);
 
   // ===== QUICK LOVE BUTTON SETTINGS =====
@@ -129,9 +131,38 @@ export default function SettingsScreen({ navigation }: any) {
   const [showQuickLoveMessages, setShowQuickLoveMessages] = useState(false);
   const [defaultQuickMessage, setDefaultQuickMessage] = useState('I Love You ❤️');
   const [isSavingDefaultMessage, setIsSavingDefaultMessage] = useState(false);
+  const [customQuickMessages, setCustomQuickMessages] = useState<any[]>([]);
+  const [newCustomMessageText, setNewCustomMessageText] = useState('');
+  const [newCustomMessageEmoji, setNewCustomMessageEmoji] = useState('❤️');
+  const [isSavingCustomMessage, setIsSavingCustomMessage] = useState(false);
   
   const nicknameInputRef = useRef<TextInput>(null);
   const pingInputRef = useRef<TextInput>(null);
+
+  const fetchCoupleSettings = useCallback(async () => {
+    try {
+      const res = await api.get('/couple/settings');
+      if (res?.data) {
+        setCoupleFeatureStatus(res.data.coupleFeatureStatus);
+        setCoupleFeatureEnabled(res.data.coupleFeatureStatus === 'active');
+        setCoupleStatusFromPartner(res.data.coupleStatusFromPartner);
+        setCoupleStatusFromMe(res.data.coupleStatusFromMe);
+      }
+    } catch (e) {
+      console.log('Failed to fetch settings', e);
+    }
+  }, []);
+
+  const fetchQuickMessages = useCallback(async () => {
+    try {
+      const res = await api.get('/couple/quick-love-messages');
+      if (res?.data?.success) {
+        setCustomQuickMessages(res.data.data);
+      }
+    } catch (e) {
+      console.log('Failed to fetch messages', e);
+    }
+  }, []);
 
   // Load preferences on mount
   useEffect(() => {
@@ -145,7 +176,10 @@ export default function SettingsScreen({ navigation }: any) {
         setDefaultQuickMessage(res.data.defaultMessage);
       }
     }).catch(() => {});
-  }, []);
+
+    fetchCoupleSettings();
+    fetchQuickMessages();
+  }, [fetchCoupleSettings, fetchQuickMessages]);
 
   const handleSaveDefaultQuickMessage = useCallback(async () => {
     setIsSavingDefaultMessage(true);
@@ -315,12 +349,14 @@ export default function SettingsScreen({ navigation }: any) {
     setRefreshing(true);
     try {
       await authService.me();
+      await fetchCoupleSettings();
+      await fetchQuickMessages();
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Refresh failed', text2: 'Could not load latest data' });
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchCoupleSettings, fetchQuickMessages]);
 
   const handleChangePassword = useCallback(() => {
     navigation.navigate('ChangePassword');
@@ -384,6 +420,8 @@ export default function SettingsScreen({ navigation }: any) {
       if (enabled) {
         await api.post('/couple/request-feature');
         setCoupleFeatureStatus('pending');
+        setCoupleStatusFromMe('pending');
+        setCoupleStatusFromPartner(null);
         Toast.show({
           type: 'info',
           text1: 'Request Sent 💕',
@@ -391,8 +429,10 @@ export default function SettingsScreen({ navigation }: any) {
         });
       } else {
         await api.post('/couple/disable-feature');
-        setCoupleFeatureStatus('declined');
+        setCoupleFeatureStatus(null);
         setCoupleFeatureEnabled(false);
+        setCoupleStatusFromMe(null);
+        setCoupleStatusFromPartner(null);
         Toast.show({
           type: 'info',
           text1: 'Couple+ Disabled',
@@ -413,10 +453,42 @@ export default function SettingsScreen({ navigation }: any) {
         type: 'success',
         text1: enabled ? 'Quick Love notifications enabled' : 'Quick Love notifications disabled',
       });
-    } catch {
+    } catch (error) {
       Toast.show({ type: 'error', text1: 'Failed to update settings' });
     }
   }, []);
+
+  const handleAddCustomQuickMessage = async () => {
+    if (!newCustomMessageText.trim()) return;
+    setIsSavingCustomMessage(true);
+    try {
+      const res = await api.post('/couple/quick-love-messages', {
+        text: newCustomMessageText.trim(),
+        emoji: newCustomMessageEmoji,
+      });
+      if (res?.data?.success) {
+        setCustomQuickMessages((prev) => [res.data.data, ...prev]);
+        setNewCustomMessageText('');
+        Toast.show({ type: 'success', text1: 'Custom message added!' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to add custom message' });
+    } finally {
+      setIsSavingCustomMessage(false);
+    }
+  };
+
+  const handleDeleteCustomQuickMessage = async (id: string) => {
+    try {
+      const res = await api.delete(`/couple/quick-love-messages/${id}`);
+      if (res?.data?.success) {
+        setCustomQuickMessages((prev) => prev.filter((msg) => msg._id !== id));
+        Toast.show({ type: 'success', text1: 'Message deleted!' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Failed to delete message' });
+    }
+  };
 
   useEffect(() => {
     if (isNicknameModalVisible) {
@@ -619,6 +691,61 @@ export default function SettingsScreen({ navigation }: any) {
               <Text style={styles.helperText}>
                 💡 Single tap sends this message. Long press to choose from options.
               </Text>
+
+              <View style={styles.divider} />
+
+              <TouchableOpacity 
+                style={styles.manageMessagesBtn}
+                onPress={() => setShowQuickLoveMessages(!showQuickLoveMessages)}
+              >
+                <FontAwesome name="list" size={16} color={COLORS.primary} style={{ marginRight: 8 }} />
+                <Text style={styles.manageMessagesBtnText}>
+                  {showQuickLoveMessages ? 'Hide Custom Messages' : 'Manage Custom Messages'}
+                </Text>
+                <FontAwesome name={showQuickLoveMessages ? 'chevron-up' : 'chevron-down'} size={12} color="#555" />
+              </TouchableOpacity>
+
+              {showQuickLoveMessages && (
+                <View style={styles.customMessagesListContainer}>
+                  {customQuickMessages.map((msg) => (
+                    <View key={msg._id} style={styles.customMessageRow}>
+                      <Text style={styles.customMessageText}>{msg.emoji} {msg.text}</Text>
+                      <TouchableOpacity onPress={() => handleDeleteCustomQuickMessage(msg._id)}>
+                        <FontAwesome name="trash" size={16} color={COLORS.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <View style={styles.addCustomMessageRow}>
+                    <TextInput
+                      style={styles.emojiInput}
+                      value={newCustomMessageEmoji}
+                      onChangeText={setNewCustomMessageEmoji}
+                      placeholder="❤️"
+                      placeholderTextColor="#777"
+                      maxLength={4}
+                    />
+                    <TextInput
+                      style={styles.customMessageTextInput}
+                      value={newCustomMessageText}
+                      onChangeText={setNewCustomMessageText}
+                      placeholder="New message text..."
+                      placeholderTextColor="#777"
+                      maxLength={50}
+                    />
+                    <TouchableOpacity 
+                      style={styles.addMessageSubmitBtn}
+                      onPress={handleAddCustomQuickMessage}
+                      disabled={isSavingCustomMessage}
+                    >
+                      {isSavingCustomMessage ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <FontAwesome name="plus" size={16} color="#fff" />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
 
             {/* ===== COUPLE+ SETTINGS ===== */}
@@ -627,27 +754,73 @@ export default function SettingsScreen({ navigation }: any) {
               <View style={styles.coupleFeatureInfo}>
                 <Text style={styles.coupleFeatureLabel}>Exclusive Features</Text>
                 <Text style={styles.coupleFeatureDesc}>
-                  Connection Meter • Couple Questions • Date Ideas • Challenges • Private Wishlist
+                  Connection Meter • Couple Questions • Date Ideas • Challenges • Private Wishlist • Position Explorer
                 </Text>
               </View>
-              <SettingItem
-                icon="lock"
-                label={
-                  coupleFeatureStatus === 'active'
-                    ? 'Couple+ Active ✓'
-                    : coupleFeatureStatus === 'pending'
-                    ? 'Request Pending...'
-                    : 'Enable Couple+'
-                }
-                value={coupleFeatureEnabled || coupleFeatureStatus === 'active'}
-                onToggle={handleToggleCoupleFeature}
-                loading={isTogglingCoupleFeature}
-                isLast
-              />
-              {coupleFeatureStatus === 'pending' && (
-                <Text style={styles.coupleFeaturePending}>
-                  ⏳ Waiting for {partner?.name || 'your partner'} to accept
-                </Text>
+              {coupleStatusFromPartner === 'pending' ? (
+                <View style={styles.pendingRequestContainer}>
+                  <Text style={styles.pendingRequestText}>
+                    💕 {partner?.name || 'Your partner'} requested to enable Couple+ mode!
+                  </Text>
+                  <View style={styles.pendingRequestButtons}>
+                    <TouchableOpacity
+                      style={[styles.requestBtn, styles.acceptBtn]}
+                      onPress={async () => {
+                        setIsTogglingCoupleFeature(true);
+                        try {
+                          await api.post('/couple/accept-feature');
+                          await fetchCoupleSettings();
+                          Toast.show({ type: 'success', text1: 'Couple+ Enabled! 🎉' });
+                        } catch (error) {
+                          Toast.show({ type: 'error', text1: 'Failed to accept' });
+                        } finally {
+                          setIsTogglingCoupleFeature(false);
+                        }
+                      }}
+                    >
+                      <Text style={styles.requestBtnText}>Accept</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.requestBtn, styles.declineBtn]}
+                      onPress={async () => {
+                        setIsTogglingCoupleFeature(true);
+                        try {
+                          await api.post('/couple/decline-feature');
+                          await fetchCoupleSettings();
+                          Toast.show({ type: 'info', text1: 'Request Declined' });
+                        } catch (error) {
+                          Toast.show({ type: 'error', text1: 'Failed to decline' });
+                        } finally {
+                          setIsTogglingCoupleFeature(false);
+                        }
+                      }}
+                    >
+                      <Text style={styles.requestBtnText}>Decline</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <SettingItem
+                    icon="lock"
+                    label={
+                      coupleFeatureStatus === 'active'
+                        ? 'Couple+ Active ✓'
+                        : coupleFeatureStatus === 'pending'
+                        ? 'Request Pending...'
+                        : 'Enable Couple+'
+                    }
+                    value={coupleFeatureEnabled || coupleFeatureStatus === 'active'}
+                    onToggle={handleToggleCoupleFeature}
+                    loading={isTogglingCoupleFeature}
+                    isLast
+                  />
+                  {coupleFeatureStatus === 'pending' && (
+                    <Text style={styles.coupleFeaturePending}>
+                      ⏳ Waiting for {partner?.name || 'your partner'} to accept
+                    </Text>
+                  )}
+                </>
               )}
             </View>
           </>
@@ -961,5 +1134,116 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     marginTop: -8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#1a1a1a',
+    marginVertical: 12,
+  },
+  manageMessagesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  manageMessagesBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+    marginLeft: 8,
+  },
+  customMessagesListContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  customMessageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  customMessageText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  addCustomMessageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  emojiInput: {
+    backgroundColor: '#111',
+    color: '#fff',
+    borderRadius: 12,
+    padding: 10,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    width: 50,
+    textAlign: 'center',
+  },
+  customMessageTextInput: {
+    flex: 1,
+    backgroundColor: '#111',
+    color: '#fff',
+    borderRadius: 12,
+    padding: 10,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  addMessageSubmitBtn: {
+    backgroundColor: COLORS.primary,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingRequestContainer: {
+    padding: 16,
+    alignItems: 'center',
+    gap: 12,
+  },
+  pendingRequestText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  pendingRequestButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  requestBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  acceptBtn: {
+    backgroundColor: COLORS.primary,
+  },
+  declineBtn: {
+    backgroundColor: '#333',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  requestBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

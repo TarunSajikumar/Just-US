@@ -9,9 +9,10 @@ interface GoalsCardProps {
   goals: Goal[];
   onUpdateProgress: (goalId: string, increment?: number) => void;
   onAddGoal: () => void;
+  onDeleteGoal: (goalId: string, title: string) => void;
 }
 
-const GoalsCard: React.FC<GoalsCardProps> = ({ goals, onUpdateProgress, onAddGoal }) => {
+const GoalsCard: React.FC<GoalsCardProps> = ({ goals, onUpdateProgress, onAddGoal, onDeleteGoal }) => {
   const activeGoals = goals.filter((g) => !g.completed);
   const completedGoals = goals.filter((g) => g.completed);
 
@@ -62,7 +63,12 @@ const GoalsCard: React.FC<GoalsCardProps> = ({ goals, onUpdateProgress, onAddGoa
         </View>
       ) : (
         activeGoals.map((goal) => (
-          <View key={goal._id} style={styles.goalItem}>
+          <TouchableOpacity
+            key={goal._id}
+            style={styles.goalItem}
+            onLongPress={() => onDeleteGoal(goal._id, goal.title)}
+            activeOpacity={0.9}
+          >
             <View style={styles.bucketRow}>
               <View style={styles.leftContainer}>
                 <View style={styles.emojiContainer}>
@@ -83,7 +89,7 @@ const GoalsCard: React.FC<GoalsCardProps> = ({ goals, onUpdateProgress, onAddGoa
                 <Ionicons name="ellipse-outline" size={24} color={COLORS.subtext} />
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
         ))
       )}
 
@@ -91,7 +97,12 @@ const GoalsCard: React.FC<GoalsCardProps> = ({ goals, onUpdateProgress, onAddGoa
         <View style={styles.completedSection}>
           <Text style={styles.completedLabel}>🏆 Completed Plans & Adventures</Text>
           {completedGoals.slice(0, 4).map((goal) => (
-            <View key={goal._id} style={styles.completedItem}>
+            <TouchableOpacity
+              key={goal._id}
+              style={styles.completedItem}
+              onLongPress={() => onDeleteGoal(goal._id, goal.title)}
+              activeOpacity={0.9}
+            >
               <View style={styles.completedEmojiContainer}>
                 <Text style={styles.completedEmoji}>{goal.emoji || '✨'}</Text>
               </View>
@@ -102,9 +113,13 @@ const GoalsCard: React.FC<GoalsCardProps> = ({ goals, onUpdateProgress, onAddGoa
                 <FontAwesome name="check-circle" size={12} color="#2ECC71" />
                 <Text style={styles.completedBadgeText}>Completed</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
+      )}
+
+      {(activeGoals.length > 0 || completedGoals.length > 0) && (
+        <Text style={styles.hintText}>Long-press a wish or goal to remove it</Text>
       )}
     </View>
   );
@@ -114,15 +129,15 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: COLORS.card,
     borderRadius: 24,
-    padding: 16,
+    padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.border,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 6,
   },
   header: {
     flexDirection: 'row',
@@ -130,93 +145,104 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-    paddingBottom: 8,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    paddingBottom: 12,
   },
   activeTitle: {
     color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.4,
   },
   addChallengeLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 77, 109, 0.08)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    backgroundColor: 'rgba(255, 77, 109, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 77, 109, 0.2)',
   },
   addLinkText: {
     color: COLORS.primary,
     fontSize: 11,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   emptyStateContainer: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 24,
   },
   iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 77, 109, 0.08)',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255, 77, 109, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 77, 109, 0.2)',
   },
   emptyTitle: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 6,
+    fontWeight: '600',
+    marginBottom: 8,
+    letterSpacing: 0.2,
   },
   emptyText: {
     color: COLORS.subtext,
-    fontSize: 12,
+    fontSize: 13,
     textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 18,
+    marginBottom: 18,
+    lineHeight: 20,
     paddingHorizontal: 20,
   },
   gradientBtn: {
     borderRadius: 20,
     overflow: 'hidden',
     shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
   },
   btnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   btnText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '600',
     fontSize: 13,
+    letterSpacing: 0.3,
   },
   emptyActiveContainer: {
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   emptyActiveText: {
     color: COLORS.subtext,
-    fontSize: 12,
+    fontSize: 13,
     fontStyle: 'italic',
     textAlign: 'center',
   },
   goalItem: {
     marginBottom: 12,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.03)',
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 2,
   },
   bucketRow: {
     flexDirection: 'row',
@@ -231,91 +257,111 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emojiContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   goalEmoji: {
-    fontSize: 20,
+    fontSize: 22,
   },
   textContainer: {
     flex: 1,
   },
   goalTitle: {
     color: '#fff',
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: '600',
-    lineHeight: 18,
+    lineHeight: 20,
+    letterSpacing: 0.2,
   },
   badgeTextLabel: {
     color: COLORS.subtext,
-    fontSize: 10,
-    marginTop: 2,
+    fontSize: 11,
+    marginTop: 3,
     fontWeight: '500',
   },
   checkButton: {
     padding: 4,
   },
   completedSection: {
-    marginTop: 8,
-    paddingTop: 12,
+    marginTop: 12,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   completedLabel: {
     color: '#FFD700',
-    fontSize: 11,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-    marginBottom: 10,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    marginBottom: 12,
+    textTransform: 'uppercase',
   },
   completedItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    backgroundColor: 'rgba(46,204,113,0.04)',
-    borderRadius: 12,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(46, 204, 113, 0.06)',
+    marginBottom: 10,
+    backgroundColor: 'rgba(46,204,113,0.08)',
+    borderRadius: 14,
+    padding: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(46, 204, 113, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
   },
   completedEmojiContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   completedEmoji: {
-    fontSize: 14,
+    fontSize: 16,
   },
   completedTitle: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 12.5,
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 13,
     flex: 1,
     lineHeight: 18,
     textDecorationLine: 'line-through',
+    letterSpacing: 0.1,
   },
   completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(46, 204, 113, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    backgroundColor: 'rgba(46, 204, 113, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(46, 204, 113, 0.2)',
-    gap: 3,
+    borderColor: 'rgba(46, 204, 113, 0.3)',
+    gap: 4,
   },
   completedBadgeText: {
     color: '#2ECC71',
-    fontSize: 10,
-    fontWeight: 'bold',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  hintText: {
+    color: COLORS.subtext,
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 12,
+    opacity: 0.6,
+    fontStyle: 'italic',
   },
 });
 

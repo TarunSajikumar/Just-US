@@ -19,9 +19,11 @@ interface FloatingActionMenuProps {
   onAddPoll?: () => void;
   onAddNote?: () => void;
   onAddEvent?: () => void;
-  additionalActions?: string[];
+  onAddMood?: () => void;
   onAddWishlist?: () => void;
   onAddDateIdea?: () => void;
+  onAddQuestion?: () => void;
+  isCouplePlus?: boolean;
 }
 
 export default function FloatingActionMenu({
@@ -29,9 +31,11 @@ export default function FloatingActionMenu({
   onAddPoll,
   onAddNote,
   onAddEvent,
-  additionalActions = [],
+  onAddMood,
   onAddWishlist,
   onAddDateIdea,
+  onAddQuestion,
+  isCouplePlus = false,
 }: FloatingActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const navigation = useNavigation<any>();
@@ -41,15 +45,21 @@ export default function FloatingActionMenu({
   const baseActions = [
     {
       icon: 'pencil',
-      label: 'Note',
+      label: 'Love Note',
       onPress: onAddNote,
       color: '#FF4D8D',
     },
     {
-      icon: 'calendar',
-      label: 'Event',
-      onPress: onAddEvent,
-      color: '#9B5DE5',
+      icon: 'camera',
+      label: 'Memory',
+      route: 'Gallery',
+      color: COLORS.primary,
+    },
+    {
+      icon: 'smile-o',
+      label: 'Mood',
+      onPress: onAddMood,
+      color: '#FFD700',
     },
     {
       icon: 'bullseye',
@@ -64,26 +74,20 @@ export default function FloatingActionMenu({
       color: '#4D96FF',
     },
     {
-      icon: 'lock',
-      label: 'Vault',
-      route: 'Vault',
-      color: '#6BCB77',
-    },
-    {
-      icon: 'camera',
-      label: 'Photo',
-      route: 'Gallery',
-      color: COLORS.secondary,
+      icon: 'calendar',
+      label: 'Event',
+      onPress: onAddEvent,
+      color: '#9B5DE5',
     },
   ];
 
   // ===== COUPLE+ ACTIONS =====
-  const couple_PlusActions = [
+  const couplePlusActions = [
     {
-      icon: 'heart',
-      label: 'Wishlist',
+      icon: 'lock',
+      label: 'Private Wishlist',
       onPress: onAddWishlist,
-      color: '#FF1744',
+      color: '#6BCB77',
     },
     {
       icon: 'star',
@@ -91,12 +95,18 @@ export default function FloatingActionMenu({
       onPress: onAddDateIdea,
       color: '#FFD700',
     },
+    {
+      icon: 'question-circle',
+      label: 'Couple Question',
+      onPress: onAddQuestion,
+      color: '#FF1744',
+    },
   ];
 
   // ===== COMBINED ACTIONS =====
   const actions = [
     ...baseActions,
-    ...(additionalActions?.includes('wishlist') || additionalActions?.includes('dateIdea') ? couple_PlusActions : []),
+    ...(isCouplePlus ? couplePlusActions : []),
   ];
 
   const toggleMenu = () => {
@@ -145,7 +155,7 @@ export default function FloatingActionMenu({
         {actions.map((action, index) => {
           const translateY = animation.interpolate({
             inputRange: [0, 1],
-            outputRange: [0, -70 * (index + 1)],
+            outputRange: [0, -65 * (index + 1)],
           });
 
           const scale = animation.interpolate({
@@ -236,15 +246,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    width: 200,
+    width: 220,
     right: 0,
     bottom: 0,
     paddingBottom: 7,
   },
   actionButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
@@ -255,10 +265,12 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     marginRight: 15,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(17,17,17,0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,

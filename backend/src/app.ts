@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import mongoose from "mongoose";
 import "./config/env";
 import authRoutes from "./routes/auth.routes";
 import chatRoutes from "./routes/chatRoutes";
@@ -34,16 +35,20 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Health check endpoint
 app.get("/", (_, res) => {
-  res.json({ 
+  const dbStatus = (mongoose.connection && mongoose.connection.readyState === 1) ? 'connected' : 'disconnected';
+  res.json({
     status: "ok",
     message: "JustUs Backend Running ❤️",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development',
+    db: dbStatus
   });
 });
 
 app.get("/health", (_, res) => {
-  res.json({ 
-    status: "healthy",
+  const dbStatus = (mongoose.connection && mongoose.connection.readyState === 1) ? 'healthy' : 'unhealthy';
+  res.json({
+    status: dbStatus,
     timestamp: new Date().toISOString()
   });
 });
