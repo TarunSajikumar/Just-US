@@ -36,8 +36,38 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# Android build files
-android/.gradle/
-android/build/
-android/app/build/
+# Ignore everything inside android by default
+android/**
+
+# Keep required Android configuration and wrapper files
+!android/
+!android/app/
+!android/build.gradle
+!android/settings.gradle
+!android/gradle.properties
+!android/gradlew
+!android/gradlew.bat
+!android/gradle/
+!android/gradle/wrapper/
+!android/gradle/wrapper/gradle-wrapper.properties
+
+# Keep app source files
+!android/app/src/
+!android/app/src/**
+
+# Keep app build config and proguard files
+!android/app/build.gradle
+!android/app/proguard-rules.pro
+
+# Ignore all build directories and intermediates
+android/app/build/**
+
+# Keep the release folder path but ignore its APK files (due to GitHub 100MB limit)
+!android/app/build/
+!android/app/build/outputs/
+!android/app/build/outputs/apk/
+!android/app/build/outputs/apk/release/
+android/app/build/outputs/apk/release/JustUs.apk
+android/app/build/outputs/apk/release/*
+
 

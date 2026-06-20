@@ -2,8 +2,30 @@
 #
 .DS_Store
 
+# Ignore everything inside build
+android/app/build/*
+
+# Keep outputs folder
+!android/app/build/outputs/
+
+# Ignore everything inside outputs
+android/app/build/outputs/*
+
+# Keep apk folder
+!android/app/build/outputs/apk/
+
+# Ignore everything inside apk
+android/app/build/outputs/apk/*
+
+# Keep release folder
+!android/app/build/outputs/apk/release/
+
+# Keep APK files
+!android/app/build/outputs/apk/release/*.apk
+
 # Android/IntelliJ
 #
+
 .idea
 .gradle
 local.properties
