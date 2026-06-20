@@ -17,14 +17,18 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # The generated APK path
-$apkPath = "c:\Users\USER\Downloads\JUSTUS\mobile-app\android\app\build\outputs\apk\release\app-release.apk"
+$apkPath = "c:\Users\USER\Downloads\JUSTUS\mobile-app\android\app\build\outputs\apk\release\JustUs.apk"
+$fallbackPath = "c:\Users\USER\Downloads\JUSTUS\mobile-app\android\app\build\outputs\apk\release\app-release.apk"
 $destPath = "c:\Users\USER\Downloads\JUSTUS\web-landing\justus.apk"
 
 if (Test-Path $apkPath) {
     Copy-Item -Path $apkPath -Destination $destPath -Force
-    Write-Host "✅ Release APK successfully copied to: $destPath" -ForegroundColor Green
+    Write-Host "✅ Release APK ($apkPath) successfully copied to: $destPath" -ForegroundColor Green
+} elseif (Test-Path $fallbackPath) {
+    Copy-Item -Path $fallbackPath -Destination $destPath -Force
+    Write-Host "✅ Release APK ($fallbackPath) successfully copied and renamed to: $destPath" -ForegroundColor Green
 } else {
-    Write-Host "❌ Could not find the built APK at $apkPath" -ForegroundColor Red
+    Write-Host "❌ Could not find the built APK at $apkPath or $fallbackPath" -ForegroundColor Red
 }
 
 cd $originalDir

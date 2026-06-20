@@ -24,7 +24,7 @@ const { width: W, height: H } = Dimensions.get('window');
 const STAR_COUNT = 70;
 const PARTICLE_COUNT = 18;
 const PARTICLE_MAX_DIST = 105;
-const HEART_ICONS = ['❤️', '💕', '💖', '💗', '✦', '·', '♡', '💝'];
+const HEART_ICONS = ['❤️', '💕', '💖', '💗', '✦', '·', '♡', '💝', '❤️', '💕', '💖', '💗', '💓', '💝', '💘', '♥️'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function rand(min: number, max: number) {
@@ -413,5 +413,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -50,
     color: '#FF4F8B',
-  },
+  }
 });
