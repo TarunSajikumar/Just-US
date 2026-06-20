@@ -3,6 +3,7 @@ import Invite from "../models/Invite";
 import Couple from "../models/Couple";
 import User from "../models/User";
 import { unlockAchievement } from "../services/achievement.service";
+import { getIO } from "../sockets";
 
 /**
  * POST /api/invite/create
@@ -93,6 +94,15 @@ export const joinInvite = async (req: any, res: Response) => {
 
     // Unlock FIRST_CONNECTION achievement
     await unlockAchievement(coupleId.toString(), "FIRST_CONNECTION");
+
+    // Emit partner_connected socket event to the creator to let them know setup is complete
+    const io = getIO();
+    if (io) {
+      io.to(creatorId.toString()).emit("partner_connected", {
+        coupleId: coupleId.toString(),
+        partnerId: userId,
+      });
+    }
 
     return res.json({
       success: true,

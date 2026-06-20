@@ -1,4 +1,5 @@
 import { Response } from "express";
+import mongoose from "mongoose";
 import User from "../models/User";
 import Message from "../models/Message";
 import { AuthRequest } from "../middleware/auth.middleware";
@@ -9,22 +10,25 @@ import { getIO } from "../sockets";
  * Returns paginated chat history between the current user and their partner.
  */
 export const getMessages = async (req: AuthRequest, res: Response) => {
-  const userId = req.userId!;
-  const { partnerId } = req.params;
+  const userId = req.userId as string;
+  const partnerId = req.params.partnerId as string;
   const limit = parseInt(req.query.limit as string) || 50;
   const before = req.query.before as string | undefined;
 
-  if (!partnerId) {
-    return res.status(400).json({ message: "partnerId is required" });
+  if (!partnerId || !mongoose.Types.ObjectId.isValid(partnerId)) {
+    return res.status(400).json({ message: "Valid partnerId is required" });
   }
 
   try {
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const partnerObjectId = new mongoose.Types.ObjectId(partnerId);
+
     let query: any = {
       $or: [
-        { sender_id: userId, receiver_id: partnerId },
-        { sender_id: partnerId, receiver_id: userId },
+        { sender_id: userObjectId, receiver_id: partnerObjectId },
+        { sender_id: partnerObjectId, receiver_id: userObjectId },
       ],
-      deleted_by: { $ne: userId }
+      deleted_by: { $ne: userObjectId }
     };
 
     if (before) {
@@ -37,7 +41,7 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
 
     // Mark messages from partner as read
     const result = await Message.updateMany(
-      { sender_id: partnerId, receiver_id: userId, read: false },
+      { sender_id: partnerObjectId, receiver_id: userObjectId, read: false },
       { $set: { read: true, status: 'read' } }
     );
 
@@ -64,7 +68,7 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
         is_voice: m.is_voice || false,
         voice_duration: m.voice_duration || 0,
         is_pinned: m.is_pinned || false,
-        is_saved: m.is_saved_by?.includes(userId) || false,
+        is_saved: m.is_saved_by?.some((id: any) => id.toString() === userId.toString()) || false,
         is_edited: m.is_edited || false,
         created_at: m.createdAt,
       })),
@@ -84,8 +88,8 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
   const userId = req.userId!;
   const { partnerId, message, reply_to } = req.body;
 
-  if (!partnerId || !message?.trim()) {
-    return res.status(400).json({ message: "partnerId and message are required" });
+  if (!partnerId || !mongoose.Types.ObjectId.isValid(partnerId) || !message?.trim()) {
+    return res.status(400).json({ message: "Valid partnerId and message are required" });
   }
 
   try {
@@ -98,9 +102,12 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const partnerObjectId = new mongoose.Types.ObjectId(partnerId);
+
     const newMessage: any = await Message.create({
-      sender_id: userId,
-      receiver_id: partnerId,
+      sender_id: userObjectId,
+      receiver_id: partnerObjectId,
       message: message.trim(),
       reply_to: reply_to || null,
       status: status as any,
@@ -134,12 +141,19 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
  * Marks all messages from the partner as read.
  */
 export const markMessagesRead = async (req: AuthRequest, res: Response) => {
-  const userId = req.userId!;
-  const { partnerId } = req.params;
+  const userId = req.userId as string;
+  const partnerId = req.params.partnerId as string;
+
+  if (!partnerId || !mongoose.Types.ObjectId.isValid(partnerId)) {
+    return res.status(400).json({ message: "Valid partnerId is required" });
+  }
 
   try {
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const partnerObjectId = new mongoose.Types.ObjectId(partnerId);
+
     const result = await Message.updateMany(
-      { sender_id: partnerId, receiver_id: userId, read: false },
+      { sender_id: partnerObjectId, receiver_id: userObjectId, read: false },
       { $set: { read: true, status: 'read' } }
     );
 
@@ -173,6 +187,14 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
     }
 
     await Message.deleteOne({ _id: messageId });
+
+    // Emit socket event to partner
+    const io = getIO();
+    if (io && message.receiver_id) {
+      const room = [userId, message.receiver_id.toString()].sort().join("-");
+      io.to(room).emit("message_deleted", { messageId });
+    }
+
     return res.json({ success: true });
   } catch (error) {
     console.error("deleteMessage error:", error);
@@ -189,15 +211,18 @@ export const searchMessages = async (req: AuthRequest, res: Response) => {
   const userId = req.userId!;
   const { partnerId, q } = req.query as { partnerId: string; q: string };
 
-  if (!partnerId || !q?.trim()) {
-    return res.status(400).json({ message: "partnerId and q are required" });
+  if (!partnerId || !mongoose.Types.ObjectId.isValid(partnerId) || !q?.trim()) {
+    return res.status(400).json({ message: "Valid partnerId and q are required" });
   }
 
   try {
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const partnerObjectId = new mongoose.Types.ObjectId(partnerId);
+
     const messages = await Message.find({
       $or: [
-        { sender_id: userId, receiver_id: partnerId },
-        { sender_id: partnerId, receiver_id: userId },
+        { sender_id: userObjectId, receiver_id: partnerObjectId },
+        { sender_id: partnerObjectId, receiver_id: userObjectId },
       ],
       message: { $regex: q.trim(), $options: 'i' },
     })
@@ -244,6 +269,17 @@ export const addReaction = async (req: AuthRequest, res: Response) => {
     (message as any).reaction = newReaction;
     await message.save();
 
+    // Emit socket event to partner
+    const io = getIO();
+    const receiverId = message.sender_id.toString() === userId
+      ? message.receiver_id?.toString()
+      : message.sender_id.toString();
+
+    if (io && receiverId) {
+      const room = [userId, receiverId].sort().join("-");
+      io.to(room).emit("message_reaction", { messageId, reaction: newReaction });
+    }
+
     return res.json({ success: true, reaction: newReaction });
   } catch (error) {
     console.error("addReaction error:", error);
@@ -259,8 +295,8 @@ export const uploadMediaMessage = async (req: AuthRequest, res: Response) => {
   const userId = req.userId!;
   const { partnerId, mediaType, voiceDuration } = req.body;
 
-  if (!partnerId || !mediaType) {
-    return res.status(400).json({ message: "partnerId and mediaType are required" });
+  if (!partnerId || !mongoose.Types.ObjectId.isValid(partnerId) || !mediaType) {
+    return res.status(400).json({ message: "Valid partnerId and mediaType are required" });
   }
 
   if (!req.file) {
@@ -278,10 +314,12 @@ export const uploadMediaMessage = async (req: AuthRequest, res: Response) => {
     }
 
     const durationNum = voiceDuration ? parseInt(voiceDuration, 10) : 0;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const partnerObjectId = new mongoose.Types.ObjectId(partnerId);
 
     const newMessage: any = await Message.create({
-      sender_id: userId,
-      receiver_id: partnerId,
+      sender_id: userObjectId,
+      receiver_id: partnerObjectId,
       message: mediaType === 'photo' ? "📷 Sent a photo" : mediaType === 'video' ? "🎥 Sent a video" : mediaType === 'audio' ? "🎤 Voice message" : "📄 Sent a document",
       media_url: req.file.path,
       media_type: mediaType,
@@ -351,16 +389,24 @@ export const unpinMessage = async (req: AuthRequest, res: Response) => {
  * Gets pinned messages between current user and partner.
  */
 export const getPinnedMessages = async (req: AuthRequest, res: Response) => {
-  const userId = req.userId!;
-  const { partnerId } = req.params;
+  const userId = req.userId as string;
+  const partnerId = req.params.partnerId as string;
+
+  if (!partnerId || !mongoose.Types.ObjectId.isValid(partnerId)) {
+    return res.status(400).json({ message: "Valid partnerId is required" });
+  }
+
   try {
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const partnerObjectId = new mongoose.Types.ObjectId(partnerId);
+
     const messages = await Message.find({
       $or: [
-        { sender_id: userId, receiver_id: partnerId },
-        { sender_id: partnerId, receiver_id: userId },
+        { sender_id: userObjectId, receiver_id: partnerObjectId },
+        { sender_id: partnerObjectId, receiver_id: userObjectId },
       ],
       is_pinned: true,
-      deleted_by: { $ne: userId }
+      deleted_by: { $ne: userObjectId }
     }).sort({ createdAt: -1 });
 
     return res.json(messages.map((m: any) => ({
@@ -377,7 +423,7 @@ export const getPinnedMessages = async (req: AuthRequest, res: Response) => {
       is_voice: m.is_voice || false,
       voice_duration: m.voice_duration || 0,
       is_pinned: m.is_pinned || false,
-      is_saved: m.is_saved_by?.includes(userId) || false,
+      is_saved: m.is_saved_by?.some((id: any) => id.toString() === userId.toString()) || false,
       is_edited: m.is_edited || false,
       created_at: m.createdAt,
     })));
@@ -434,16 +480,24 @@ export const unsaveMessage = async (req: AuthRequest, res: Response) => {
  * Gets saved messages between current user and partner.
  */
 export const getSavedMessages = async (req: AuthRequest, res: Response) => {
-  const userId = req.userId!;
-  const { partnerId } = req.params;
+  const userId = req.userId as string;
+  const partnerId = req.params.partnerId as string;
+
+  if (!partnerId || !mongoose.Types.ObjectId.isValid(partnerId)) {
+    return res.status(400).json({ message: "Valid partnerId is required" });
+  }
+
   try {
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const partnerObjectId = new mongoose.Types.ObjectId(partnerId);
+
     const messages = await Message.find({
       $or: [
-        { sender_id: userId, receiver_id: partnerId },
-        { sender_id: partnerId, receiver_id: userId },
+        { sender_id: userObjectId, receiver_id: partnerObjectId },
+        { sender_id: partnerObjectId, receiver_id: userObjectId },
       ],
-      is_saved_by: userId,
-      deleted_by: { $ne: userId }
+      is_saved_by: userObjectId,
+      deleted_by: { $ne: userObjectId }
     }).sort({ createdAt: -1 });
 
     return res.json(messages.map((m: any) => ({
@@ -486,6 +540,14 @@ export const editMessage = async (req: AuthRequest, res: Response) => {
       { new: true }
     );
     if (!msg) return res.status(404).json({ message: "Message not found or not authorized to edit" });
+
+    // Emit socket event to partner
+    const io = getIO();
+    if (io && msg.receiver_id) {
+      const room = [userId, msg.receiver_id.toString()].sort().join("-");
+      io.to(room).emit("message_edited", { messageId, message: msg.message });
+    }
+
     return res.json(msg);
   } catch (error) {
     console.error("editMessage error:", error);
@@ -574,14 +636,22 @@ export const forwardMessage = async (req: AuthRequest, res: Response) => {
  * Gets the number of unread messages from a partner.
  */
 export const getUnreadCount = async (req: AuthRequest, res: Response) => {
-  const userId = req.userId!;
-  const { partnerId } = req.params;
+  const userId = req.userId as string;
+  const partnerId = req.params.partnerId as string;
+
+  if (!partnerId || !mongoose.Types.ObjectId.isValid(partnerId)) {
+    return res.status(400).json({ message: "Valid partnerId is required" });
+  }
+
   try {
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const partnerObjectId = new mongoose.Types.ObjectId(partnerId);
+
     const count = await Message.countDocuments({
-      sender_id: partnerId,
-      receiver_id: userId,
+      sender_id: partnerObjectId,
+      receiver_id: userObjectId,
       read: false,
-      deleted_by: { $ne: userId }
+      deleted_by: { $ne: userObjectId }
     });
     return res.json({ count });
   } catch (error) {

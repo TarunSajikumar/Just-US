@@ -31,11 +31,11 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import Toast from 'react-native-toast-message';
-import Animated, { 
-  FadeIn, 
-  ZoomIn, 
-  FadeOut, 
-  SlideInDown, 
+import Animated, {
+  FadeIn,
+  ZoomIn,
+  FadeOut,
+  SlideInDown,
   SlideOutDown,
 } from 'react-native-reanimated';
 import { Audio } from 'expo-av';
@@ -126,13 +126,13 @@ const VoiceRecorder = ({ onSendVoice }: { onSendVoice: (uri: string, duration: n
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       const duration = recordingDuration;
-      
+
       if (uri && duration >= 1) {
         // Save to local cache
         const fileName = `voice_${Date.now()}.m4a`;
         const destination = `${(FileSystem as any).cacheDirectory}${fileName}`;
         await FileSystem.copyAsync({ from: uri, to: destination });
-        
+
         onSendVoice(destination, duration);
       } else {
         Toast.show({ type: 'error', text1: 'Recording too short (min 1s)' });
@@ -224,6 +224,7 @@ export default function ChatScreen({ navigation }: any) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
   const [showLoveBlast, setShowLoveBlast] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   // ─── Enhanced Features State ─────────────────────────────────────────────
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -252,7 +253,7 @@ export default function ChatScreen({ navigation }: any) {
     return () => {
       isMounted.current = false;
       if (audioRef.current) {
-        audioRef.current.unloadAsync().catch(() => {});
+        audioRef.current.unloadAsync().catch(() => { });
       }
     };
   }, []);
@@ -298,6 +299,7 @@ export default function ChatScreen({ navigation }: any) {
   const loadHistory = useCallback(async (isLoadMore = false) => {
     if (!partnerId || !isMounted.current) return;
     try {
+      setHasError(false);
       const beforeTimestamp =
         isLoadMore && messages.length > 0 ? messages[0].created_at : undefined;
       const newMessages = await messageService.getHistory(partnerId, beforeTimestamp);
@@ -316,6 +318,7 @@ export default function ChatScreen({ navigation }: any) {
     } catch (err) {
       console.error('Failed to load chat history:', err);
       if (isMounted.current) {
+        setHasError(true);
         Toast.show({ type: 'error', text1: 'Failed to load messages' });
       }
     } finally {
@@ -331,7 +334,7 @@ export default function ChatScreen({ navigation }: any) {
 
     if (partnerId) {
       // Mark as read on open
-      messageService.markAsRead(partnerId).catch(() => {});
+      messageService.markAsRead(partnerId).catch(() => { });
 
       // Fetch initial partner status
       api.get('/users/partner-status').then(res => {
@@ -339,8 +342,8 @@ export default function ChatScreen({ navigation }: any) {
           setIsPartnerOnline(res.data.isOnline);
           setPartnerLastSeen(res.data.lastSeen);
         }
-      }).catch(() => {});
-      
+      }).catch(() => { });
+
       loadUnreadCount();
     }
   }, [partnerId, loadHistory, loadUnreadCount]);
@@ -382,6 +385,15 @@ export default function ChatScreen({ navigation }: any) {
       const handleConnect = () => {
         socketService.emitUserOnline(user.id || user._id);
         socketService.joinRoom(partnerId);
+        // Sync on reconnect
+        loadHistory(false).catch(() => { });
+        api.get('/users/partner-status').then(res => {
+          if (res.data && isMounted.current) {
+            setIsPartnerOnline(res.data.isOnline);
+            setPartnerLastSeen(res.data.lastSeen);
+          }
+        }).catch(() => { });
+        loadUnreadCount();
       };
       handleConnectFn = handleConnect;
 
@@ -434,7 +446,7 @@ export default function ChatScreen({ navigation }: any) {
         }, 100);
 
         if (partnerId) {
-          messageService.markAsRead(partnerId).catch(() => {});
+          messageService.markAsRead(partnerId).catch(() => { });
           loadUnreadCount();
         }
 
@@ -468,10 +480,10 @@ export default function ChatScreen({ navigation }: any) {
         setMessages((prev) =>
           Array.isArray(prev)
             ? prev.map((msg) =>
-                msg.id === messageId
-                  ? { ...msg, reaction: msg.reaction === reaction ? null : reaction }
-                  : msg
-              )
+              msg.id === messageId
+                ? { ...msg, reaction: msg.reaction === reaction ? null : reaction }
+                : msg
+            )
             : []
         );
       });
@@ -483,10 +495,10 @@ export default function ChatScreen({ navigation }: any) {
         setMessages((prev) =>
           Array.isArray(prev)
             ? prev.map((msg) =>
-                msg.id === messageId
-                  ? { ...msg, message, is_edited: true }
-                  : msg
-              )
+              msg.id === messageId
+                ? { ...msg, message, is_edited: true }
+                : msg
+            )
             : []
         );
       });
@@ -526,11 +538,11 @@ export default function ChatScreen({ navigation }: any) {
         if (readerId === partnerId) {
           setMessages((prev) =>
             Array.isArray(prev)
-              ? prev.map((msg) => 
-                  msg.sender_id === (user?.id || user?._id) 
-                    ? { ...msg, read: true, status: 'read' } 
-                    : msg
-                )
+              ? prev.map((msg) =>
+                msg.sender_id === (user?.id || user?._id)
+                  ? { ...msg, read: true, status: 'read' }
+                  : msg
+              )
               : []
           );
         }
@@ -719,7 +731,7 @@ export default function ChatScreen({ navigation }: any) {
 
       const asset = result.assets[0];
       setIsSendingMedia(true);
-      
+
       try {
         const mediaMessage = await messageService.sendDocument(partnerId!, asset.uri, asset.name);
         if (isMounted.current) {
@@ -769,7 +781,7 @@ export default function ChatScreen({ navigation }: any) {
       sound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.didJustFinish) {
           setIsPlayingVoice(null);
-          sound.unloadAsync().catch(() => {});
+          sound.unloadAsync().catch(() => { });
           audioRef.current = null;
         }
       });
@@ -839,7 +851,7 @@ export default function ChatScreen({ navigation }: any) {
 
   const handleSaveEdit = useCallback(async () => {
     if (!messageToEdit || !editText.trim()) return;
-    
+
     try {
       await api.put(`/messages/${messageToEdit.id}`, { message: editText.trim() });
       if (isMounted.current) {
@@ -862,7 +874,7 @@ export default function ChatScreen({ navigation }: any) {
 
   // ─── Forward / Share / Copy Message ────────────────────────────────────────
   const handleForwardMessage = useCallback((message: ChatMessage) => {
-    navigation.navigate('SelectContact', { 
+    navigation.navigate('SelectContact', {
       messageToForward: message,
       onForward: (targetUserId: string) => {
         messageService.forwardMessage(message.id, targetUserId)
@@ -891,12 +903,12 @@ export default function ChatScreen({ navigation }: any) {
   // ─── Delete Message ────────────────────────────────────────────────────────
   const handleDeleteMessage = useCallback((messageId: string) => {
     Alert.alert(
-      'Delete Message', 
+      'Delete Message',
       'How would you like to delete this message?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete for me', 
+        {
+          text: 'Delete for me',
           onPress: async () => {
             try {
               await messageService.deleteMessageForMe(messageId);
@@ -954,7 +966,7 @@ export default function ChatScreen({ navigation }: any) {
   }, [isSelectionMode]);
 
   const toggleMessageSelection = useCallback((messageId: string) => {
-    setSelectedMessages(prev => 
+    setSelectedMessages(prev =>
       prev.includes(messageId)
         ? prev.filter(id => id !== messageId)
         : [...prev, messageId]
@@ -963,7 +975,7 @@ export default function ChatScreen({ navigation }: any) {
 
   const handleDeleteSelected = useCallback(() => {
     if (selectedMessages.length === 0) return;
-    
+
     Alert.alert(
       'Delete Messages',
       `Delete ${selectedMessages.length} selected messages?`,
@@ -995,12 +1007,12 @@ export default function ChatScreen({ navigation }: any) {
   const toggleMute = useCallback(() => {
     const nextMuted = !isMuted;
     setIsMuted(nextMuted);
-    Toast.show({ 
-      type: 'success', 
+    Toast.show({
+      type: 'success',
       text1: nextMuted ? 'Chat muted' : 'Chat unmuted',
       text2: nextMuted ? "You won't receive notifications" : 'You will receive notifications'
     });
-    api.post(`/chat/mute/${partnerId}`, { muted: nextMuted }).catch(() => {});
+    api.post(`/chat/mute/${partnerId}`, { muted: nextMuted }).catch(() => { });
   }, [isMuted, partnerId]);
 
   // ─── Typing Indicator ──────────────────────────────────────────────────────
@@ -1041,7 +1053,7 @@ export default function ChatScreen({ navigation }: any) {
       const showDateHeader =
         index === 0 ||
         new Date(messages[index - 1].created_at).toDateString() !==
-          new Date(item.created_at).toDateString();
+        new Date(item.created_at).toDateString();
 
       const itemDateObj = new Date(item.created_at);
       const isInvalidDate = isNaN(itemDateObj.getTime());
@@ -1049,10 +1061,10 @@ export default function ChatScreen({ navigation }: any) {
       const dateStr = isInvalidDate
         ? 'Unknown Date'
         : itemDateObj.toLocaleDateString(undefined, {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-          });
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+        });
 
       const today = new Date().toDateString();
       const yesterday = new Date(Date.now() - 86400000).toDateString();
@@ -1062,8 +1074,8 @@ export default function ChatScreen({ navigation }: any) {
         itemDateString === today
           ? 'Today'
           : itemDateString === yesterday
-          ? 'Yesterday'
-          : dateStr;
+            ? 'Yesterday'
+            : dateStr;
 
       const isSelected = selectedMessages.includes(item.id);
       const isPinned = pinnedMessages.some(msg => msg.id === item.id);
@@ -1119,11 +1131,11 @@ export default function ChatScreen({ navigation }: any) {
         </View>
       );
     },
-    [user?.id, user?._id, messages, handleDeleteMessage, handleReactToMessage, 
-     pinnedMessages, savedMessages, isPlayingVoice, playVoiceMessage, 
-     handlePinMessage, handleUnpinMessage, handleSaveMessage, handleUnsaveMessage,
-     handleShareMessage, handleCopyMessage, handleForwardMessage, handleEditMessage,
-     selectedMessages, toggleMessageSelection, isSelectionMode]
+    [user?.id, user?._id, messages, handleDeleteMessage, handleReactToMessage,
+      pinnedMessages, savedMessages, isPlayingVoice, playVoiceMessage,
+      handlePinMessage, handleUnpinMessage, handleSaveMessage, handleUnsaveMessage,
+      handleShareMessage, handleCopyMessage, handleForwardMessage, handleEditMessage,
+      selectedMessages, toggleMessageSelection, isSelectionMode]
   );
 
   if (!partnerId) {
@@ -1145,7 +1157,7 @@ export default function ChatScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-      
+
       <ChatHeader
         partnerName={partner?.name || 'My Partner'}
         isOnline={isPartnerOnline}
@@ -1179,8 +1191,8 @@ export default function ChatScreen({ navigation }: any) {
       )}
 
       {pinnedMessages.length > 0 && (
-        <TouchableOpacity 
-          style={styles.pinnedBanner} 
+        <TouchableOpacity
+          style={styles.pinnedBanner}
           onPress={() => setIsPinModalVisible(true)}
         >
           <FontAwesome name="thumb-tack" size={14} color={COLORS.primary} />
@@ -1243,11 +1255,25 @@ export default function ChatScreen({ navigation }: any) {
             ) : null
           }
           ListEmptyComponent={
-            <View style={styles.centered}>
-              <FontAwesome name="comments-o" size={48} color={COLORS.border} />
-              <Text style={styles.emptyTitle}>No messages yet</Text>
-              <Text style={styles.emptyText}>Send a message to start the conversation 👋</Text>
-            </View>
+            hasError ? (
+              <View style={styles.centered}>
+                <Feather name="alert-triangle" size={48} color="#ff4444" />
+                <Text style={[styles.emptyTitle, { color: '#ff4444' }]}>Failed to load messages</Text>
+                <Text style={styles.emptyText}>Please check your connection and try again.</Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => loadHistory(false)}
+                >
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.centered}>
+                <FontAwesome name="comments-o" size={48} color={COLORS.border} />
+                <Text style={styles.emptyTitle}>No messages yet</Text>
+                <Text style={styles.emptyText}>Send a message to start the conversation 👋</Text>
+              </View>
+            )
           }
         />
       )}
@@ -1257,9 +1283,9 @@ export default function ChatScreen({ navigation }: any) {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {(isTyping || isTypingIndicatorVisible) && (
-          <Animated.View 
-            entering={FadeIn.duration(200)} 
-            exiting={FadeOut.duration(200)} 
+          <Animated.View
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(200)}
             style={styles.typingBubbleContainer}
           >
             <View style={styles.typingBubble}>
@@ -1473,6 +1499,19 @@ const styles = StyleSheet.create({
   emptyText: { color: COLORS.subtext, fontSize: 14, textAlign: 'center', marginTop: 8 },
   connectButton: { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24, marginTop: 16 },
   connectButtonText: { color: '#fff', fontWeight: 'bold' },
+  retryButton: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginTop: 16,
+  },
+  retryButtonText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
   listContent: { padding: 20, paddingBottom: 20, flexGrow: 1 },
   // Typing Indicator Styles
   typingBubbleContainer: {

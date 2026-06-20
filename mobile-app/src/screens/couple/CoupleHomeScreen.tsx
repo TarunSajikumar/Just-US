@@ -58,6 +58,12 @@ import Svg, {
   Path as SvgPath,
   Circle as SvgCircle,
 } from 'react-native-svg';
+import {
+  getDaysTogether,
+  getNextAnniversary,
+  getDaysUntilAnniversary,
+  formatRelationshipDate,
+} from '../../utils/relationshipUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -131,20 +137,8 @@ const DEFAULT_QUICK_LOVE_MESSAGES: QuickLoveMessage[] = [
 ];
 
 // =============== HELPER FUNCTIONS ===============
-
-function getDaysOfLove(startDate?: string | null): number {
-  if (!startDate) return 0;
-  try {
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const diffMs = now.getTime() - start.getTime();
-    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-  } catch {
-    return 0;
-  }
-}
+// Date calculation utilities are imported from src/utils/relationshipUtils.ts
+// All anniversary data is derived from a single source: relationshipStartDate
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -396,8 +390,6 @@ export default function CoupleHomeScreen({ navigation }: any) {
     user,
     partner,
     relationshipStartDate,
-    anniversaryDate,
-    nextMeetDate,
     partnerNickname,
     refreshUser,
   } = useAuthStore();
@@ -572,7 +564,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
   const [isQuestionModalVisible, setQuestionModalVisible] = useState(false);
   const [questionInput, setQuestionInput] = useState('');
   const [isSavingQuestion, setIsSavingQuestion] = useState(false);
-  
+
   const [isAnswerModalVisible, setAnswerModalVisible] = useState(false);
   const [selectedQuestionForAnswer, setSelectedQuestionForAnswer] = useState<any>(null);
   const [answerInput, setAnswerInput] = useState('');
@@ -604,8 +596,20 @@ export default function CoupleHomeScreen({ navigation }: any) {
   // Computed Values
   const displayName = partnerNickname || partner?.name || 'Partner';
   const coupleName = user?.name ? `${user.name} & ${displayName}` : 'You & Partner';
-  const daysOfLove = getDaysOfLove(relationshipStartDate);
+  // All date values derived from single source of truth: relationshipStartDate
+  const daysOfLove = getDaysTogether(relationshipStartDate);
   const greeting = getGreeting();
+
+  // Computed Anniversary Values — always derived dynamically, never stored
+  const calculatedAnniversaryDate = useMemo(
+    () => getNextAnniversary(relationshipStartDate),
+    [relationshipStartDate]
+  );
+
+  const daysUntilAnniversary = useMemo(
+    () => getDaysUntilAnniversary(relationshipStartDate),
+    [relationshipStartDate]
+  );
 
   const userInitials = useMemo(() => {
     if (!user?.name) return '?';
@@ -620,7 +624,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
 
   // Animate days count-up
   useEffect(() => {
-    if (!loadingDashboard && daysOfLove > 0) {
+    if (!loadingDashboard) {
       RNAnimated.timing(daysAnimated, {
         toValue: daysOfLove,
         duration: 1200,
@@ -672,7 +676,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
         text2: message,
         visibilityTime: 1500,
       });
-      
+
       const socket = socketService.getSocket();
       if (socket) {
         socket.emit('quick_love_sent', { message, userId: user?._id });
@@ -725,7 +729,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
       if (res?.data) {
         setConnectionLevel(res.data.level);
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const fetchQuestions = useCallback(async () => {
@@ -734,7 +738,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
       if (res?.data) {
         setQuestions(res.data);
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const fetchWishlist = useCallback(async () => {
@@ -743,7 +747,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
       if (res?.data) {
         setWishlist(res.data);
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const fetchPositions = useCallback(async () => {
@@ -752,7 +756,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
       if (res?.data) {
         setPositions(res.data);
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const fetchIdeas = useCallback(async () => {
@@ -761,7 +765,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
       if (res?.data) {
         setIdeas(res.data);
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const fetchChallenges = useCallback(async () => {
@@ -770,7 +774,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
       if (res?.data) {
         setChallenges(res.data);
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const fetchDashboardData = useCallback(async () => {
@@ -786,11 +790,11 @@ export default function CoupleHomeScreen({ navigation }: any) {
           fetchPositions(),
           fetchIdeas(),
           fetchChallenges(),
-        ]).catch(() => {});
+        ]).catch(() => { });
       }
 
-      const safeAllSettled = (promises: Promise<any>[]) => 
-        Promise.all(promises.map(p => p.then(value => ({ status: 'fulfilled', value })).catch(reason => ({ status: 'rejected', reason }))));
+      const safeAllSettled = (promises: Promise<any>[]) =>
+        Promise.all(promises.map(p => p.then(value => ({ status: 'fulfilled', value } as any)).catch(reason => ({ status: 'rejected', reason } as any))));
 
       const [statusRes, myMoodRes, partnerMoodRes, noteRes, achRes, goalRes, pollRes, activityRes, eventRes, quickMessagesRes] =
         await safeAllSettled([
@@ -1016,7 +1020,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
       if (res.data) {
         setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, likes: res.data.likes } : i));
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleToggleIdeaComplete = async (ideaId: string, currentStatus: boolean) => {
@@ -1026,7 +1030,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
         setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, isCompleted: res.data.isCompleted } : i));
         Toast.show({ type: 'success', text1: !currentStatus ? 'Date Idea Completed! 🎉' : 'Date Idea Reset' });
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleToggleChallengeComplete = async (challengeId: string, currentStatus: boolean) => {
@@ -1036,7 +1040,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
         setChallenges(prev => prev.map(c => c.id === challengeId ? { ...c, isCompleted: res.data.isCompleted } : c));
         Toast.show({ type: 'success', text1: !currentStatus ? 'Challenge Completed! 🔥' : 'Challenge Reset' });
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSaveNote = useCallback(async () => {
@@ -1078,12 +1082,12 @@ export default function CoupleHomeScreen({ navigation }: any) {
       };
       moodText = moodMap[selectedMoodEmoji] || 'Feeling good';
     }
-    
+
     if (!moodText) {
       Toast.show({ type: 'info', text1: 'Empty mood', text2: 'Please select or describe how you feel' });
       return;
     }
-    
+
     setIsSavingMood(true);
     try {
       await moodService.setMood(moodText, selectedMoodEmoji);
@@ -1101,10 +1105,10 @@ export default function CoupleHomeScreen({ navigation }: any) {
   const handleQuickMoodSelect = useCallback(async (mood: string, emoji: string) => {
     try {
       await moodService.setMood(mood, emoji);
-      Toast.show({ 
-        type: 'success', 
-        text1: `Mood Updated: ${emoji} ${mood}`, 
-        visibilityTime: 1500 
+      Toast.show({
+        type: 'success',
+        text1: `Mood Updated: ${emoji} ${mood}`,
+        visibilityTime: 1500
       });
       fetchDashboardData();
     } catch (error) {
@@ -1274,7 +1278,10 @@ export default function CoupleHomeScreen({ navigation }: any) {
         setConnectionStatus(socket.connected ? 'connected' : 'connecting');
 
         const onConnect = () => {
-          if (isMounted) setConnectionStatus('connected');
+          if (isMounted) {
+            setConnectionStatus('connected');
+            fetchDashboardData();
+          }
         };
 
         const onDisconnect = () => {
@@ -1404,6 +1411,19 @@ export default function CoupleHomeScreen({ navigation }: any) {
         }
       });
 
+      socket?.on('relationship_dates_updated', (data: { relationshipStartDate?: string }) => {
+        if (isMounted) {
+          // Only update the start date — anniversary is derived dynamically
+          const { setRelationshipStartDate } = useAuthStore.getState();
+          if (data.relationshipStartDate) setRelationshipStartDate(data.relationshipStartDate);
+          Toast.show({
+            type: 'success',
+            text1: '❤️ Dates Synchronized',
+            text2: 'Relationship dates updated by partner!',
+          });
+        }
+      });
+
       socket?.on('couple_question_received', (newQ: any) => {
         if (isMounted) {
           Toast.show({ type: 'info', text1: 'New Question! 💭', text2: 'Your partner asked a question' });
@@ -1511,7 +1531,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
 
   // Main Render
   return (
-    <View style={{ flex: 1, backgroundColor: '#070709' }}>
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
       <VideoBackground />
       {/* Simple Black Background */}
       {/* Connection Status Indicator */}
@@ -1563,12 +1583,12 @@ export default function CoupleHomeScreen({ navigation }: any) {
                       { text: 'Where Are You 👀', onPress: () => handleQuickPing('Where Are You 👀') },
                       { text: 'What Are You Doing 😊', onPress: () => handleQuickPing('What Are You Doing 😊') },
                     ];
-                    
+
                     const customOptions = (Array.isArray(customQuickMessages) ? customQuickMessages : []).slice(0, 3).map(msg => ({
                       text: `${msg.emoji} ${msg.text}`,
                       onPress: () => handleQuickPing(`${msg.emoji} ${msg.text}`)
                     }));
-                    
+
                     const allOptions = [
                       ...baseOptions,
                       ...customOptions,
@@ -1590,7 +1610,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
                   )}
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.profileIcon}
                   onPress={() => navigation.navigate('Settings')}
                 >
@@ -1620,7 +1640,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
               <View style={[styles.decorCircle, styles.decorCircle2]} />
               <View style={[styles.decorCircle, styles.decorCircle3]} />
             </View>
-            
+
             <View style={styles.sparkleContainer}>
               <Text style={styles.sparkleIcon}>✨</Text>
               <Text style={styles.sparkleIcon2}>💫</Text>
@@ -1678,15 +1698,15 @@ export default function CoupleHomeScreen({ navigation }: any) {
                   <Text style={styles.daysBadgeText}>❤️ Together</Text>
                 </LinearGradient>
               </View>
-              
+
               {/* Progress bar */}
               <View style={styles.milestoneProgress}>
                 <View style={styles.progressBar}>
-                  <View 
+                  <View
                     style={[
-                      styles.progressFill, 
+                      styles.progressFill,
                       { width: `${Math.min(100, (displayDays / 365) * 100)}%` }
-                    ]} 
+                    ]}
                   />
                 </View>
                 <View style={styles.milestoneLabels}>
@@ -1828,20 +1848,18 @@ export default function CoupleHomeScreen({ navigation }: any) {
           </View>
         </Animated.View>
 
-        {/* Anniversary Countdown */}
-        {anniversaryDate && (
+        {/* Anniversary Countdown — always derived from relationshipStartDate, never stored */}
+        {relationshipStartDate && calculatedAnniversaryDate && (
           <Animated.View entering={FadeInDown.delay(450).duration(600)}>
             <View style={styles.anniversaryCard}>
               <Text style={styles.anniversaryTitle}>🎉 Next Anniversary</Text>
               <Text style={styles.anniversaryDate}>
-                {new Date(anniversaryDate).toLocaleDateString('en-GB', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                })}
+                {formatRelationshipDate(calculatedAnniversaryDate)}
               </Text>
               <Text style={styles.anniversaryDays}>
-                {Math.ceil((new Date(anniversaryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days to go
+                {daysUntilAnniversary === 0
+                  ? '🎉 Today is your Anniversary!'
+                  : `${daysUntilAnniversary} ${daysUntilAnniversary === 1 ? 'day' : 'days'} to go ❤️`}
               </Text>
             </View>
           </Animated.View>
@@ -2286,7 +2304,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>How are you feeling today?</Text>
             <Text style={styles.modalSubtitle}>Share your mood with your partner</Text>
-            
+
             {/* Quick Mood Selection Buttons */}
             <View style={styles.quickMoodGrid}>
               {[
@@ -2355,7 +2373,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Customize Quick Love Messages 💕</Text>
             <Text style={styles.modalSubtitle}>Add your own messages to send to your partner</Text>
-            
+
             <View style={styles.customMessageInputRow}>
               <TextInput
                 style={styles.emojiInput}
@@ -2429,7 +2447,7 @@ export default function CoupleHomeScreen({ navigation }: any) {
                   borderWidth: 1,
                   borderColor: COLORS.border,
                 }}
-                value={['🎯', '🏃', '🍕', '🎬', '🌍', '📚', '❤️', '🎮', '🎨', '✈️', '🏋️', '💪'].includes(goalEmoji) ? '' : goalEmoji}
+                value={['🎯', '🏃', '🍕', '🎬', '🌍', '📚', '❤️', '🎮', '🎨', '✈️', '🏋️', '💪', '🫂'].includes(goalEmoji) ? '' : goalEmoji}
                 onChangeText={(text) => {
                   const emoji = text.trim();
                   setGoalEmoji(emoji || '🎯');

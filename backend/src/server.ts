@@ -27,6 +27,8 @@ const io = new Server(server, {
     origin: "*",
     methods: ["GET", "POST"],
   },
+  pingInterval: 10000,
+  pingTimeout: 5000,
 });
 
 // Store io instance for global access
@@ -38,6 +40,9 @@ setupSockets(io);
 const start = async () => {
   try {
     await connectDB();
+    const User = (await import("./models/User")).default;
+    await User.updateMany({}, { isOnline: false });
+    console.log("🧹 Cleared stale user online presence states.");
     await seedDemoData();
     server.listen(PORT, "0.0.0.0", () => {
       const localIp = getLocalIp();

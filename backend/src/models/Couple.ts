@@ -12,14 +12,7 @@ const coupleSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    anniversaryDate: {
-      type: Date,
-      default: null,
-    },
-    nextMeetDate: {
-      type: Date,
-      default: null,
-    },
+
     coupleFeatureStatus: {
       type: String,
       enum: ["pending", "active", "declined", null],

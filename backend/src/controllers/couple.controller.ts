@@ -36,6 +36,8 @@ export const getCoupleProfile = async (req: any, res: Response) => {
       return res.status(404).json({ message: "Partner not found" });
     }
 
+    // Single source of truth: return only relationshipStartDate.
+    // Anniversary is calculated dynamically on the client.
     res.json({
       partner: {
         name: partner.name,
@@ -46,8 +48,6 @@ export const getCoupleProfile = async (req: any, res: Response) => {
       relationship_status: user.relationship_status,
       couple_id: user.couple_id,
       relationshipStartDate: couple?.relationshipStartDate || couple?.createdAt,
-      anniversaryDate: couple?.anniversaryDate || null,
-      nextMeetDate: couple?.nextMeetDate || null,
     });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch couple profile" });
@@ -55,7 +55,8 @@ export const getCoupleProfile = async (req: any, res: Response) => {
 };
 
 export const updateRelationshipDate = async (req: any, res: Response) => {
-  const { relationshipStartDate, anniversaryDate, nextMeetDate } = req.body;
+  // Only the relationship start date is stored. Anniversary is derived dynamically.
+  const { relationshipStartDate } = req.body;
   const userId = req.userId;
 
   try {
@@ -69,18 +70,23 @@ export const updateRelationshipDate = async (req: any, res: Response) => {
 
     const couple = await Couple.findByIdAndUpdate(
       user.couple_id,
-      {
-        relationshipStartDate,
-        anniversaryDate: anniversaryDate || null,
-        nextMeetDate: nextMeetDate || null,
-      },
-      {
-        new: true,
-      }
+      { relationshipStartDate },
+      { new: true }
     );
+
+    // Emit socket event to partner room — only the start date is broadcast.
+    // Both users will independently compute anniversary from this.
+    const io = getIO();
+    if (io && user.partner_id) {
+      const room = getCoupleRoomId(userId, user.partner_id);
+      io.to(room).emit("relationship_dates_updated", {
+        relationshipStartDate: couple?.relationshipStartDate,
+      });
+    }
 
     res.json(couple);
   } catch (error) {
+    console.error("updateRelationshipDate error:", error);
     res.status(500).json({ message: "Failed to update relationship date" });
   }
 };

@@ -8,11 +8,25 @@ import PendingUser from "../models/PendingUser";
 import Otp from "../models/Otp";
 import Couple from "../models/Couple";
 
+const getNextAnniversary = (relationshipStartDate: Date | string): Date => {
+  const start = new Date(relationshipStartDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const currentYear = today.getFullYear();
+  const nextAnn = new Date(currentYear, start.getMonth(), start.getDate());
+  nextAnn.setHours(0, 0, 0, 0);
+
+  if (nextAnn.getTime() < today.getTime()) {
+    nextAnn.setFullYear(currentYear + 1);
+  }
+  return nextAnn;
+};
+
 const resolveFullProfile = async (user: any) => {
   let partner = null;
   let relationshipStartDate = null;
   let anniversaryDate = null;
-  let nextMeetDate = null;
 
   try {
     if (user.couple_id && user.couple_id !== "" && user.couple_id !== "null") {
@@ -21,9 +35,8 @@ const resolveFullProfile = async (user: any) => {
         Couple.findById(user.couple_id)
       ]);
       partner = partnerData;
-      relationshipStartDate = coupleData?.relationshipStartDate || coupleData?.createdAt;
-      anniversaryDate = coupleData?.anniversaryDate || null;
-      nextMeetDate = coupleData?.nextMeetDate || null;
+      relationshipStartDate = coupleData?.relationshipStartDate || coupleData?.createdAt || new Date();
+      anniversaryDate = getNextAnniversary(relationshipStartDate);
     }
   } catch (error) {
     console.error("resolveFullProfile error:", error);
@@ -34,7 +47,6 @@ const resolveFullProfile = async (user: any) => {
     partner,
     relationshipStartDate,
     anniversaryDate,
-    nextMeetDate,
   };
 };
 

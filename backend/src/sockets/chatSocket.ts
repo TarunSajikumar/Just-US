@@ -12,32 +12,58 @@ export const setupSockets = (io: Server) => {
     let userId: string | null = null;
     try {
       const token = socket.handshake.auth.token as string;
-      if (token) {
-        const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
-        userId = decoded.userId;
+      if (!token) {
+        console.warn("Socket connection rejected: missing token");
+        socket.disconnect(true);
+        return;
       }
-    } catch {
-      console.warn("Socket connected with invalid/missing token");
+      const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
+      userId = decoded.userId;
+    } catch (err) {
+      console.warn("Socket connection rejected: invalid token");
+      socket.disconnect(true);
+      return;
     }
 
-    console.log("Socket connected — userId:", userId ?? "(guest)");
+    console.log("Socket connected — userId:", userId);
 
     if (userId) {
       socket.join(userId);
-      User.findByIdAndUpdate(userId, { isOnline: true }).catch((err) =>
+      (socket as any).userId = userId;
+
+      User.findByIdAndUpdate(userId, { isOnline: true }).then(async (userObj) => {
+        if (userObj && userObj.partner_id) {
+          const partnerId = userObj.partner_id.toString();
+          
+          // Emit online status change to partner room
+          io.to(partnerId).emit("user_status_change", { userId, status: "online" });
+
+          // Check if partner is currently online
+          const partnerSockets = Array.from(io.of("/").sockets.values());
+          const isPartnerOnline = partnerSockets.some((s: any) => s.userId === partnerId);
+          const partnerUser = await User.findById(partnerId);
+          
+          // Send partner's current status to this connecting user socket
+          socket.emit("user_status_change", {
+            userId: partnerId,
+            status: isPartnerOnline ? "online" : "offline",
+            lastSeen: partnerUser?.lastSeen || null,
+          });
+        }
+      }).catch((err) =>
         console.error("Error setting isOnline on connect:", err)
       );
-      // Wait a tiny bit to ensure the connection is stable
-      setTimeout(() => {
-        socket.broadcast.emit("user_status_change", { userId, status: "online" });
-      }, 500);
     }
 
     socket.on("user-online", async (id: string) => {
-      userId = id;
-      await User.findByIdAndUpdate(id, { isOnline: true }).catch(console.error);
-      socket.join(id);
-      socket.broadcast.emit("user_status_change", { userId: id, status: "online" });
+      if (userId && id === userId) {
+        await User.findByIdAndUpdate(id, { isOnline: true }).catch(console.error);
+        socket.join(id);
+        const userObj = await User.findById(id);
+        if (userObj && userObj.partner_id) {
+          io.to(userObj.partner_id.toString()).emit("user_status_change", { userId: id, status: "online" });
+        }
+      }
     });
 
     // ── Join room ─────────────────────────────────────────
@@ -163,25 +189,28 @@ export const setupSockets = (io: Server) => {
 
     // ── Disconnect ────────────────────────────────────────
     socket.on("disconnect", () => {
-      console.log("Socket disconnected — userId:", userId ?? "(guest)");
+      console.log("Socket disconnected — userId:", userId);
       if (userId) {
-        const userRoom = io.sockets.adapter.rooms.get(userId);
-        const stillConnected = userRoom ? userRoom.size > 0 : false;
+        const stillConnected = Array.from(io.of("/").sockets.values()).some(
+          (s: any) => s.userId === userId && s.id !== socket.id
+        );
 
         if (!stillConnected) {
           const lastSeen = new Date();
           User.findByIdAndUpdate(userId, {
             isOnline: false,
             lastSeen,
+          }).then(async (userObj) => {
+            if (userObj && userObj.partner_id) {
+              io.to(userObj.partner_id.toString()).emit("user_status_change", {
+                userId,
+                status: "offline",
+                lastSeen,
+              });
+            }
           }).catch((err) => console.error("Error setting offline on disconnect:", err));
-
-          socket.broadcast.emit("user_status_change", {
-            userId,
-            status: "offline",
-            lastSeen,
-          });
         } else {
-          console.log(`User ${userId} still has active connection(s) (remaining sockets: ${userRoom?.size}).`);
+          console.log(`User ${userId} still has active connection(s).`);
         }
       }
     });

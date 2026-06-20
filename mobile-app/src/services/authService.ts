@@ -13,8 +13,6 @@ export const authService = {
       setUser,
       setPartner,
       setRelationshipStartDate,
-      setAnniversaryDate,
-      setNextMeetDate,
       setPartnerNickname,
       setPartnerPingMessage,
       setNotificationsEnabled,
@@ -23,9 +21,9 @@ export const authService = {
 
     setUser(profile);
     setPartner(profile.partner ?? null);
+    // Single source of truth: map only the start date.
+    // Anniversary is derived dynamically via relationshipUtils.
     setRelationshipStartDate(profile.relationshipStartDate ?? null);
-    setAnniversaryDate(profile.anniversaryDate ?? null);
-    setNextMeetDate(profile.nextMeetDate ?? null);
     setPartnerNickname(profile.partnerNickname ?? '');
     setPartnerPingMessage(profile.partnerPingMessage ?? 'I miss you, where are you? ❤️');
     setNotificationsEnabled(profile.notificationsEnabled ?? false);
@@ -52,8 +50,9 @@ export const authService = {
     return response.data;
   },
 
-  updateRelationshipDate: async (data: { relationshipStartDate?: string; anniversaryDate?: string; nextMeetDate?: string; }) => {
-    const response = await api.put('/auth/relationship-date', data);
+  /** PUT /api/couple/relationship-date — only accepts relationshipStartDate */
+  updateRelationshipDate: async (data: { relationshipStartDate: string }) => {
+    const response = await api.put('/couple/relationship-date', data);
     return response.data;
   },
 

@@ -102,8 +102,8 @@ export const getPartnerStatus = async (req: AuthRequest, res: Response) => {
     const io = getIO();
     let isOnline = false;
     if (io && partner) {
-      const partnerRoom = io.sockets.adapter.rooms.get(partner._id.toString());
-      isOnline = partnerRoom ? partnerRoom.size > 0 : (partner.isOnline || false);
+      const activeSockets = Array.from(io.of("/").sockets.values());
+      isOnline = activeSockets.some((s: any) => s.userId === partner._id.toString());
     } else if (partner) {
       isOnline = partner.isOnline || false;
     }

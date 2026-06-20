@@ -68,7 +68,7 @@ class SocketService {
           reconnection: true,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
-          reconnectionAttempts: 5,
+          reconnectionAttempts: Infinity,
         });
 
         return this.socket;

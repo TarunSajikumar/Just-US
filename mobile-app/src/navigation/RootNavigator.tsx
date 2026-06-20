@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // Screens
@@ -110,8 +110,20 @@ export default function RootNavigator() {
     return <SplashScreen navigation={null} />;
   }
 
+  const JustusTheme = {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      primary: '#FF4F8B',
+      background: '#070709', // Match the deep dark screen background
+      card: 'transparent',   // Transparent so the custom glass tab bar shows cleanly
+      text: '#FFFFFF',
+      border: 'transparent', // Remove default top border on tab bar container
+    },
+  };
+
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} theme={JustusTheme}>
       {!token ? (
         <AuthNavigator />
       ) : !user?.name ? (

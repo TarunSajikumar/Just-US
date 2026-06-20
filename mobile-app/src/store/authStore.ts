@@ -44,9 +44,12 @@ interface AuthState {
   user: any | null;
   partner: any | null;
   relationshipMode: 'SOLO' | 'COUPLE' | 'NONE';
+  /**
+   * The single source of truth for all relationship date calculations.
+   * Anniversary date is NEVER stored — it is always derived dynamically
+   * using the utility functions in src/utils/relationshipUtils.ts.
+   */
   relationshipStartDate: string | null;
-  anniversaryDate: string | null;
-  nextMeetDate: string | null;
   partnerNickname: string;
   partnerPingMessage: string;
   notificationsEnabled: boolean;
@@ -55,8 +58,6 @@ interface AuthState {
   setPartner: (partner: any | null) => void;
   setRelationshipMode: (mode: 'SOLO' | 'COUPLE' | 'NONE') => void;
   setRelationshipStartDate: (date: string | null) => void;
-  setAnniversaryDate: (date: string | null) => void;
-  setNextMeetDate: (date: string | null) => void;
   setPartnerNickname: (nickname: string) => void;
   setPartnerPingMessage: (message: string) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -72,8 +73,6 @@ export const useAuthStore = create<AuthState>()(
       partner: null,
       relationshipMode: 'NONE',
       relationshipStartDate: null,
-      anniversaryDate: null,
-      nextMeetDate: null,
       partnerNickname: '',
       partnerPingMessage: 'I miss you, where are you? ❤️',
       notificationsEnabled: false,
@@ -82,8 +81,6 @@ export const useAuthStore = create<AuthState>()(
       setPartner: (partner) => set({ partner }),
       setRelationshipMode: (relationshipMode) => set({ relationshipMode }),
       setRelationshipStartDate: (relationshipStartDate) => set({ relationshipStartDate }),
-      setAnniversaryDate: (anniversaryDate) => set({ anniversaryDate }),
-      setNextMeetDate: (nextMeetDate) => set({ nextMeetDate }),
       setPartnerNickname: (partnerNickname) => set({ partnerNickname }),
       setPartnerPingMessage: (partnerPingMessage) => set({ partnerPingMessage }),
       setNotificationsEnabled: (notificationsEnabled) => set({ notificationsEnabled }),
@@ -98,8 +95,6 @@ export const useAuthStore = create<AuthState>()(
           partner: null,
           relationshipMode: 'NONE',
           relationshipStartDate: null,
-          anniversaryDate: null,
-          nextMeetDate: null,
           partnerNickname: '',
           partnerPingMessage: 'I miss you, where are you? ❤️',
           notificationsEnabled: false,
@@ -109,9 +104,6 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'justus-auth-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      // We don't want to persist the token in AsyncStorage because it's in SecureStore
-      // But for simplicity of this task, we can persist everything in AsyncStorage
-      // or selectively omit. Given the current setup, I'll persist everything.
     }
   )
 );

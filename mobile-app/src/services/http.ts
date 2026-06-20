@@ -32,7 +32,7 @@ const getDevApiUrl = (): string => {
     }
 
     // Priority 4: Try to resolve developer machine's IP dynamically from Expo CLI
-    const hostUri = Constants?.expoConfig?.hostUri || Constants?.manifest?.hostUri;
+    const hostUri = Constants?.expoConfig?.hostUri || (Constants?.manifest as any)?.hostUri;
     if (hostUri) {
       const hostIp = hostUri.split(':')[0];
       const resolvedUrl = `http://${hostIp}:5000/api`;

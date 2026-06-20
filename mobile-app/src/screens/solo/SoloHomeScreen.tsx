@@ -17,6 +17,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
 import { inviteService } from '../../services/inviteService';
+import { socketService } from '../../services/socket';
 import Toast from 'react-native-toast-message';
 import VideoBackground from '../../components/VideoBackground';
 
@@ -73,6 +74,39 @@ export default function SoloHomeScreen({ navigation }: any) {
   const [isJoining, setIsJoining] = useState(false);
   const [showJoinInput, setShowJoinInput] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Setup socket listener for pairing in real-time
+  useEffect(() => {
+    let active = true;
+    let socket: any = null;
+
+    const setupSocket = async () => {
+      if (user?._id) {
+        socket = await socketService.connect();
+        if (socket && active) {
+          socketService.emitUserOnline(user._id);
+          socket.on('partner_connected', async (data: any) => {
+            console.log('Partner connected socket event received:', data);
+            Toast.show({
+              type: 'success',
+              text1: '🎉 Partner Connected!',
+              text2: 'You are now linked with your partner!',
+            });
+            await refreshUser();
+          });
+        }
+      }
+    };
+
+    setupSocket();
+
+    return () => {
+      active = false;
+      if (socket) {
+        socket.off('partner_connected');
+      }
+    };
+  }, [user?._id, refreshUser]);
 
   // Load existing active invite code on mount
   useEffect(() => {
