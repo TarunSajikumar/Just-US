@@ -354,6 +354,24 @@ export const updateProfile = async (req: any, res: Response) => {
       { returnDocument: 'after' }
     );
     const fullProfile = await resolveFullProfile(updatedUser);
+    // Emit socket event to partner so UI updates instantly
+    try {
+      const { getIO, getCoupleRoomId } = await import('../sockets');
+      const io = getIO();
+      if (io && updatedUser && updatedUser.partner_id) {
+        const payload = {
+          userId: updatedUser._id.toString(),
+          name: updatedUser.name,
+          birthday: updatedUser.birthday || null,
+          gender: updatedUser.gender || null,
+        };
+          const partnerRoom = updatedUser.partner_id.toString();
+          io.to(partnerRoom).emit('profile_updated', payload);
+      }
+    } catch (emitErr) {
+      console.error('Failed to emit profile_updated socket event:', emitErr);
+    }
+
     res.status(200).json({ success: true, user: fullProfile });
   } catch (error) {
     res.status(500).json({ message: "Failed to update profile" });

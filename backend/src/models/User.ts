@@ -81,6 +81,10 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    lastHeartbeat: {
+      type: Date,
+      default: null,
+    },
 
     notificationsEnabled: {
       type: Boolean,
@@ -95,6 +99,11 @@ const userSchema = new mongoose.Schema(
     quickLoveDefaultMessage: {
       type: String,
       default: "I Love You ❤️",
+    },
+    appLockSettings: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AppLockSettings",
+      nullable: true,
     },
   },
   {

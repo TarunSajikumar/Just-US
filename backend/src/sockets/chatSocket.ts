@@ -160,6 +160,31 @@ export const setupSockets = (io: Server) => {
       }
     });
 
+    // ── Profile update sync (for display name / gender changes) ─────────────────
+    socket.on('profile_updated', async (data: { userId: string; name?: string; gender?: string; birthday?: string }) => {
+      // broadcast to partner room if exists
+      try {
+        if (!userId) return;
+        const userObj = await User.findById(userId);
+        if (userObj && userObj.partner_id) {
+          const room = roomId(userId, userObj.partner_id.toString());
+          io.to(room).emit('profile_updated', data);
+        }
+      } catch (err) {
+        console.error('profile_updated handler error:', err);
+      }
+    });
+
+    // ── Client heartbeat to keep presence accurate ───────────────────────────
+    socket.on('client_heartbeat', async (data: any) => {
+      try {
+        if (!userId) return;
+        await User.findByIdAndUpdate(userId, { lastHeartbeat: new Date(), isOnline: true });
+      } catch (err) {
+        console.error('heartbeat handler error:', err);
+      }
+    });
+
     // ── Typing indicator ──────────────────────────────────
     // Supports both old format { partnerId } and new { partnerId, isTyping }
     socket.on("typing", (data: { partnerId: string; isTyping?: boolean }) => {

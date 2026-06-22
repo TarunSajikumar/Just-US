@@ -10,9 +10,22 @@ class SocketService {
   private socket: Socket | null = null;
   private connectPromise: Promise<Socket | null> | null = null;
   private isConnecting = false;
+  private heartbeatInterval: any = null;
 
   constructor() {
     this.setupAppStateListener();
+  }
+
+  /** Heartbeat ping to keep server informed and detect stale connections */
+  startHeartbeat(intervalMs = 10000) {
+    if (!this.socket) return;
+    // clear existing interval
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket && this.socket.connected) {
+        this.socket.emit('client_heartbeat', { ts: new Date().toISOString() });
+      }
+    }, intervalMs);
   }
 
   private setupAppStateListener() {
@@ -69,6 +82,19 @@ class SocketService {
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
           reconnectionAttempts: Infinity,
+        });
+
+        // start heartbeat once socket connects
+        this.socket.on('connect', () => {
+          this.startHeartbeat();
+        });
+
+        // clear heartbeat on disconnect
+        this.socket.on('disconnect', () => {
+          if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+          }
         });
 
         return this.socket;

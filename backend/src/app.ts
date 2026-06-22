@@ -19,6 +19,10 @@ import goalRoutes from "./routes/goal.routes";
 import pollRoutes from "./routes/poll.routes";
 import activityRoutes from "./routes/activity.routes";
 import eventRoutes from "./routes/event.routes";
+import periodRoutes from "./routes/period.routes";
+import eighteenPlusRoutes from "./routes/18plus.routes";
+import appLockRoutes from "./routes/applock.routes";
+import heartsRoutes from "./routes/hearts.routes";
 import { authMiddleware } from "./middleware/auth.middleware";
 
 const app = express();
@@ -71,6 +75,10 @@ app.use("/api/goals", goalRoutes);
 app.use("/api/polls", pollRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/events", eventRoutes);
+app.use("/api/period", periodRoutes);
+app.use("/api/18plus", eighteenPlusRoutes);
+app.use("/api/applock", appLockRoutes);
+app.use("/api/hearts", heartsRoutes);
 
 app.get("/api/me", authMiddleware, (req: any, res) => {
   res.json({ userId: req.userId });

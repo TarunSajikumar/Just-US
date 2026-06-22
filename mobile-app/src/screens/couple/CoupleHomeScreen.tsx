@@ -1424,6 +1424,21 @@ export default function CoupleHomeScreen({ navigation }: any) {
         }
       });
 
+      socket?.on('profile_updated', (data: { userId: string; name?: string; gender?: string; birthday?: string }) => {
+        if (!isMounted) return;
+        try {
+          const { setPartner, setUser } = useAuthStore.getState();
+          if (data.userId === partner?._id) {
+            setPartner({ ...(partner || {}), name: data.name ?? partner?.name, gender: data.gender ?? partner?.gender, birthday: data.birthday ?? partner?.birthday });
+          }
+          if (data.userId === user?._id) {
+            setUser({ ...(user || {}), name: data.name ?? user?.name, gender: data.gender ?? user?.gender, birthday: data.birthday ?? user?.birthday });
+          }
+        } catch (err) {
+          console.error('Failed to apply profile_updated socket data', err);
+        }
+      });
+
       socket?.on('couple_question_received', (newQ: any) => {
         if (isMounted) {
           Toast.show({ type: 'info', text1: 'New Question! 💭', text2: 'Your partner asked a question' });

@@ -111,6 +111,15 @@ export const authService = {
     return response.data;
   },
 
+  updateProfile: async (data: { name?: string; birthday?: string; gender?: string }) => {
+    const response = await api.put('/auth/profile', data);
+    // update local store if we get user back
+    if (response.data && response.data.user) {
+      await authService.updateStoreWithProfile(response.data.user);
+    }
+    return response.data;
+  },
+
   /** GET /api/auth/me */
   me: async () => {
     const response = await api.get('/auth/me');
